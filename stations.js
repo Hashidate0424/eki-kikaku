@@ -546,7 +546,7 @@ const allStations = [
   { name: "池上", kana: "いけがみ", pref: "東京都", company: "東急電鉄", line: "池上線", subName: "" },
   { name: "池下", kana: "いけした", pref: "愛知県", company: "名古屋市交通局", line: "東山線", subName: "" },
   { name: "池尻", kana: "いけじり", pref: "福岡県", company: "九州旅客鉄道", line: "日田彦山線", subName: "" },
-  { name: "池尻大橋", kana: "いけじりおお橋", pref: "東京都", company: "東急電鉄", line: "田園都市線", subName: "" },
+  { name: "池尻大橋", kana: "いけじりおおはし", pref: "東京都", company: "東急電鉄", line: "田園都市線", subName: "" },
   { name: "池田", kana: "いけだ", pref: "北海道", company: "北海道旅客鉄道", line: "根室本線", subName: "" },
   { name: "池田", kana: "いけだ", pref: "大阪府", company: "阪急電鉄", line: "宝塚本線", subName: "" },
   { name: "池田", kana: "いけだ", pref: "熊本県", company: "熊本電気鉄道", line: "菊池線", subName: "" },
