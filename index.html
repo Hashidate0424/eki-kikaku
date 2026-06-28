@@ -175,6 +175,7 @@
             display: flex;
             gap: 8px;
             justify-content: flex-end;
+            margin-top: 5px;
         }
 
         .delete-btn { background-color: #e74c3c; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 6px; cursor: pointer; }
@@ -206,6 +207,15 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .my-station-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-grow: 1;
+            margin: 0;
         }
 
         .edit-toggle-btn {
@@ -217,6 +227,7 @@
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
+            white-space: nowrap;
         }
         .edit-toggle-btn.editing {
             background-color: #e67e22;
@@ -319,8 +330,13 @@
                     </div>
                     
                     <div class="flex-options-left">
-                        <label style="color: #b7950b; cursor: pointer;"><input type="checkbox" id="checkOnlyOwn"> 🌟 マイ駅のみ検索</label>
                         <label><input type="checkbox" id="checkKana"> ふりがな</label>
+                    </div>
+
+                    <div style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 8px;">
+                        <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: bold; color: #008080;">👥 所持メンバーで絞り込み (複数選択可)</p>
+                        <div id="searchMemberFilterContainer" style="display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 13px; background: white; padding: 8px; border-radius: 6px; border: 1px solid #b2d8d8;">
+                            </div>
                     </div>
                 </details>
             </div>
@@ -333,7 +349,11 @@
 
         <div id="pageMyList" class="page-content">
             <div class="my-station-header">
-                <h2>🌟 マイ駅一覧 (<span id="ownCount">0</span>駅) <span style="font-size:11px; color:#e67e22;">※五十音順</span></h2>
+                <h2>
+                    <span>🌟</span>
+                    <select id="userSelect" onchange="changeViewedUser()" style="padding: 6px 10px; font-size: 15px; border: 2px solid #00a497; border-radius: 8px; background: white; font-weight: bold; color: #006666; width: auto; max-width: 150px; cursor: pointer;"></select>
+                    <span style="font-size: 15px; white-space: nowrap;">(<span id="ownCount">0</span>駅)</span>
+                </h2>
                 <button id="editToggleBtn" class="edit-toggle-btn" onclick="toggleEditMode()">⚙️ 編集</button>
             </div>
 
@@ -368,7 +388,7 @@
             </details>
 
             <div class="search-container" style="padding: 10px; margin-bottom: 10px; gap: 8px;">
-                <input type="text" id="myOwnSearchInput" placeholder="マイ駅からキーワード検索..." oninput="updateOwnList()" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8;">
+                <input type="text" id="myOwnSearchInput" placeholder="マイ駅から検索..." oninput="updateOwnList()" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8;">
             </div>
 
             <ul id="myOwnStationsList"></ul>
@@ -458,9 +478,16 @@
 
         let stationMemo = [];
         let currentUser = null; 
+        let viewedUser = null; 
         let isEditMode = false; 
         let combinedStationsList = []; 
         let allUserData = {};
+
+        const prefOrder = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
+        function getPrefIndex(prefName) {
+            const index = prefOrder.findIndex(p => p.startsWith(prefName));
+            return index === -1 ? 999 : index;
+        }
 
         window.onload = function() {
             database.ref("users").on("value", (snapshot) => {
@@ -475,6 +502,8 @@
                     }
                 } else {
                     refreshCombinedStations();
+                    updateUserSelect(); 
+                    updateSearchMemberFilters(); // 🌟 メンバー用チェックボックスも動的に更新
                     updateOwnList();
                 }
             });
@@ -505,10 +534,17 @@
                 document.getElementById("pageMyList").classList.add("active");
                 navItems[1].classList.add("active");
                 isEditMode = false;
+                
+                viewedUser = currentUser; 
                 let btn = document.getElementById("editToggleBtn");
-                if (btn) { btn.textContent = "⚙️ 編集"; btn.classList.remove("editing"); }
+                if (btn) { 
+                    btn.textContent = "⚙️ 編集"; 
+                    btn.classList.remove("editing"); 
+                    btn.classList.remove("hidden");
+                }
                 document.getElementById("myOwnSearchInput").value = ""; 
                 refreshCombinedStations();
+                updateUserSelect();
                 updateOwnList();
             } else if (pageName === 'settings') {
                 document.getElementById("pageSettings").classList.add("active");
@@ -517,7 +553,74 @@
             window.scrollTo(0, 0);
         }
 
+        function updateUserSelect() {
+            let select = document.getElementById("userSelect");
+            if (!select) return;
+            
+            let currentSelection = select.value || viewedUser || currentUser;
+            select.innerHTML = "";
+            
+            Object.keys(allUserData).sort().forEach(name => {
+                let option = document.createElement("option");
+                option.value = name;
+                option.textContent = name === currentUser ? `${name} (自分)` : name;
+                if (name === currentSelection) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+
+        // 🌟 検索タブのこだわり検索内にあるメンバーチェックボックスを生成・維持する関数
+        function updateSearchMemberFilters() {
+            let container = document.getElementById("searchMemberFilterContainer");
+            if (!container) return;
+
+            let previouslyChecked = [];
+            document.querySelectorAll(".search-member-cb:checked").forEach(cb => {
+                previouslyChecked.push(cb.value);
+            });
+
+            container.innerHTML = "";
+
+            Object.keys(allUserData).sort().forEach(name => {
+                let label = document.createElement("label");
+                label.style.cursor = "pointer";
+                label.style.display = "inline-flex";
+                label.style.alignItems = "center";
+                label.style.gap = "4px";
+
+                let cb = document.createElement("input");
+                cb.type = "checkbox";
+                cb.value = name;
+                cb.className = "search-member-cb";
+                if (previouslyChecked.includes(name)) cb.checked = true;
+
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(name === currentUser ? `${name} (自分)` : name));
+                container.appendChild(label);
+            });
+        }
+
+        function changeViewedUser() {
+            let select = document.getElementById("userSelect");
+            viewedUser = select.value;
+            
+            let btn = document.getElementById("editToggleBtn");
+            if (viewedUser !== currentUser) {
+                isEditMode = false;
+                if (btn) {
+                    btn.classList.add("hidden");
+                    btn.textContent = "⚙️ 編集";
+                    btn.classList.remove("editing");
+                }
+            } else {
+                if (btn) btn.classList.remove("hidden");
+            }
+            
+            updateOwnList();
+        }
+
         function toggleEditMode() {
+            if (viewedUser !== currentUser) return; 
             isEditMode = !isEditMode;
             let btn = document.getElementById("editToggleBtn");
             if (isEditMode) {
@@ -550,6 +653,7 @@
             if (allUserData[name]) {
                 if (allUserData[name].password === pass) {
                     currentUser = name;
+                    viewedUser = name;
                     localStorage.setItem("persistentLoginUser", name);
                     sessionStorage.setItem("loginUser", name);
                     alert("ログインしました！");
@@ -563,6 +667,7 @@
                 database.ref("users/" + name).set(newUserData)
                 .then(() => {
                     currentUser = name;
+                    viewedUser = name;
                     localStorage.setItem("persistentLoginUser", name);
                     sessionStorage.setItem("loginUser", name);
                     alert("新しくアカウントを作成してサーバーにログインしました！");
@@ -580,9 +685,12 @@
             document.getElementById("loginGatePage").classList.remove("active");
             document.getElementById("bottomNavBar").classList.remove("hidden");
             document.getElementById("welcomeMessage").textContent = currentUser + " さん";
+            if (!viewedUser) viewedUser = currentUser;
             refreshCombinedStations(); 
+            updateUserSelect();
+            updateSearchMemberFilters(); // 🌟 ログイン直後にもチェックボックスを準備
             updateOwnList();
-            updateList();
+            updateMemoList();
         }
 
         function refreshCombinedStations() {
@@ -630,7 +738,8 @@
 
         function logout() {
             currentUser = null;
-            localStorage.removeItem("persistentLoginUser"); // 自動ログイン情報も削除
+            viewedUser = null;
+            localStorage.removeItem("persistentLoginUser"); 
             sessionStorage.removeItem("loginUser");
             
             document.getElementById("bottomNavBar").classList.add("hidden");
@@ -667,6 +776,7 @@
             .then(() => {
                 database.ref("users/" + currentUser).remove();
                 currentUser = newName;
+                if(viewedUser === currentUser || !viewedUser) viewedUser = newName;
                 localStorage.setItem("persistentLoginUser", newName);
                 sessionStorage.setItem("loginUser", newName);
                 document.getElementById("welcomeMessage").textContent = currentUser + " さん";
@@ -705,9 +815,9 @@
             }
         }
 
-        function getOwnStationsArray() {
-            if (!currentUser || !allUserData[currentUser]) return [];
-            return allUserData[currentUser].myOwnStations || [];
+        function getOwnStationsArray(user = currentUser) {
+            if (!user || !allUserData[user]) return [];
+            return allUserData[user].myOwnStations || [];
         }
 
         function saveOwnStationsArray(arr) {
@@ -717,7 +827,7 @@
 
         function addOwnStation(stationName) {
             if (!currentUser) return;
-            let myOwnStations = [...getOwnStationsArray()];
+            let myOwnStations = [...getOwnStationsArray(currentUser)];
             if (myOwnStations.includes(stationName)) { alert("すでに登録されています！"); return; }
             myOwnStations.push(stationName);
             saveOwnStationsArray(myOwnStations);
@@ -728,6 +838,13 @@
             alert("「" + cleanName + "」をマイ駅に追加しました！");
         }
 
+        function removeOwnStation(stationName) {
+            if (viewedUser !== currentUser) return; 
+            if (!confirm(`「${stationName}」をマイ駅から削除しますか？`)) return;
+            let myOwnStations = getOwnStationsArray(currentUser).filter(name => name !== stationName);
+            saveOwnStationsArray(myOwnStations);
+        }
+
         function addBulkOwnStations() {
             if (!currentUser) { alert("ログインしてください"); return; }
             
@@ -736,7 +853,7 @@
             if (text === "") { alert("駅名を入力してね！"); return; }
 
             let lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line !== "");
-            let myOwnStations = [...getOwnStationsArray()];
+            let myOwnStations = [...getOwnStationsArray(currentUser)];
             let reportMessages = [];   
             let multipleReports = [];  
 
@@ -748,123 +865,293 @@
                         reportMessages.push(`⚠️ ${inputLine} は既に登録されています。`);
                     } else {
                         myOwnStations.push(inputLine);
-                        reportMessages.push(`✅ ${inputLine} を登録しました！`);
-                    }
-                    return;
-                }
-
-                let matches = combinedStationsList.filter(s => s.name === inputLine);
-
-                if (matches.length === 0) {
-                    reportMessages.push(`❌ 「${inputLine}」という駅データは見つかりませんでした。`);
-                } else if (matches.length === 1) {
-                    let fullName = `${matches[0].name}（${matches[0].company}）`;
-                    if (myOwnStations.includes(fullName)) {
-                        reportMessages.push(`⚠️ ${fullName} は既に登録されています。`);
-                    } else {
-                        myOwnStations.push(fullName);
-                        reportMessages.push(`✨ ${fullName} を自動判別して登録しました！`);
+                        reportMessages.push(`✅ ${inputLine} を登録しました。`);
                     }
                 } else {
-                    let addedCompanies = [];
-                    let skippedCompanies = [];
-
-                    matches.forEach(station => {
-                        let fullName = `${station.name}（${station.company}）`;
+                    let matches = combinedStationsList.filter(s => s.name === inputLine);
+                    if (matches.length === 1) {
+                        let fullName = `${matches[0].name}（${matches[0].company}）`;
                         if (myOwnStations.includes(fullName)) {
-                            skippedCompanies.push(station.company);
+                            reportMessages.push(`⚠️ ${fullName} は既に登録されています。`);
                         } else {
                             myOwnStations.push(fullName);
-                            addedCompanies.push(station.company);
+                            reportMessages.push(`✅ ${fullName} を登録しました。`);
                         }
-                    });
-
-                    let msg = `📢 「${inputLine}」は複数の駅データが見つかったため、すべて処理しました：\n`;
-                    if (addedCompanies.length > 0) msg += `   ・登録完了: ${addedCompanies.join(', ')}\n`;
-                    if (skippedCompanies.length > 0) msg += `   ・既に登録済のためスキップ: ${skippedCompanies.join(', ')}\n`;
-                    multipleReports.push(msg);
+                    } else if (matches.length > 1) {
+                        multipleReports.push(inputLine);
+                    } else {
+                        reportMessages.push(`❌ ${inputLine} という駅は見つかりませんでした。`);
+                    }
                 }
             });
 
             saveOwnStationsArray(myOwnStations);
-
-            let resultText = "【一括登録の結果】\n";
-            if (reportMessages.length > 0) resultText += reportMessages.join("\n") + "\n\n";
+            
+            let alertMsg = "";
+            if (reportMessages.length > 0) alertMsg += reportMessages.join("\n");
             if (multipleReports.length > 0) {
-                resultText += "=== ⚠️ 複数データが存在した駅の報告 ===\n";
-                resultText += multipleReports.join("\n");
+                alertMsg += "\n\n⚠️ 複数の候補があるため自動登録できなかった駅:\n" + multipleReports.join(", ");
             }
-
+            alert(alertMsg || "処理が完了しました。");
             textarea.value = "";
-            alert(resultText);
         }
 
-        function updateOwnList() {
-            let ownList = document.getElementById("myOwnStationsList");
-            if (!ownList) return;
-            ownList.innerHTML = "";
+        // 🌟 パワーアップした検索ロジック
+        function searchStations() {
+            let keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+            let type = document.getElementById("searchType").value;
 
-            let originalOwnStations = getOwnStationsArray();
-            document.getElementById("ownCount").textContent = originalOwnStations.length;
+            let checkName = document.getElementById("checkName").checked;
+            let checkSub = document.getElementById("checkSub").checked;
+            let checkCompany = document.getElementById("checkCompany").checked;
+            let checkLine = document.getElementById("checkLine").checked;
+            let checkPref = document.getElementById("checkPref").checked;
+            let checkKana = document.getElementById("checkKana").checked;
 
-            if(originalOwnStations.length === 0) {
-                ownList.innerHTML = '<li style="color:#7f8c8d; text-align:center;">登録されたマイ駅はありません</li>';
-                document.getElementById("statsKana").innerHTML = "<div>データがありません</div>";
-                document.getElementById("statsKanaEnd").innerHTML = "<div>データがありません</div>";
-                document.getElementById("statsPref").innerHTML = "<div>データがありません</div>";
-                document.getElementById("statsCompany").innerHTML = "<div>データがありません</div>";
+            // 🌟 チェックの入っているメンバーを配列で回収
+            let checkedMembers = [];
+            document.querySelectorAll(".search-member-cb:checked").forEach(cb => {
+                checkedMembers.push(cb.value);
+            });
+
+            let sourceList = combinedStationsList;
+
+            // 🌟 もしメンバーにチェックが入っていたら、そのメンバー達の誰かが持っている駅だけで絞り込み
+            if (checkedMembers.length > 0) {
+                sourceList = combinedStationsList.filter(s => {
+                    let fullName = `${s.name}（${s.company}）`;
+                    return checkedMembers.some(member => {
+                        let ownStations = (allUserData[member] && allUserData[member].myOwnStations) || [];
+                        return ownStations.includes(fullName);
+                    });
+                });
+            }
+
+            let results = sourceList.filter(item => {
+                if (keyword === "") return true;
+
+                let targets = [];
+                if (checkName) targets.push(item.name);
+                if (checkSub && item.subName) targets.push(item.subName);
+                if (checkCompany) targets.push(item.company);
+                if (checkLine) targets.push(item.line);
+                if (checkPref) targets.push(item.pref);
+                if (checkKana) targets.push(item.kana);
+
+                return targets.some(target => {
+                    let t = target.toLowerCase();
+                    if (type === "partial") return t.includes(keyword);
+                    if (type === "forward") return t.startsWith(keyword);
+                    if (type === "backward") return t.endsWith(keyword);
+                    if (type === "exact") return t === keyword;
+                    if (type === "forward_backward") return t.startsWith(keyword) || t.endsWith(keyword);
+                    if (type === "length") return t.length === parseInt(keyword) || false;
+                    return false;
+                });
+            });
+
+            let ul = document.getElementById("searchResults");
+            ul.innerHTML = "";
+            document.getElementById("searchResultTitleCount").textContent = `(${results.length}件)`;
+
+            if (results.length === 0) {
+                ul.innerHTML = '<li style="color:#7f8c8d; text-align:center;">条件に合う駅が見つかりませんでした</li>';
                 return;
             }
 
-            let kanaCounts = {};
-            let kanaEndCounts = {}; 
-            let prefCounts = {};
-            let companyCounts = {};
+            results.slice(0, 200).forEach(item => {
+                let fullName = `${item.name}（${item.company}）`;
+                let li = document.createElement("li");
 
-            let listData = originalOwnStations.map((fullName, index) => {
-                let name = fullName;
-                let company = "";
-                let splitIdx = fullName.indexOf("（");
-                if (splitIdx !== -1) {
-                    name = fullName.substring(0, splitIdx);
-                    company = fullName.substring(splitIdx + 1, fullName.length - 1);
+                let title = document.createElement("div");
+                title.style.fontWeight = "bold";
+                title.textContent = fullName;
+                li.appendChild(title);
+
+                let info = document.createElement("div");
+                info.style.fontSize = "13px";
+                info.style.color = "#666";
+                info.textContent = `${item.pref} / ${item.line} [かな: ${item.kana}]${item.subName ? ` (${item.subName})` : ''}`;
+                li.appendChild(info);
+
+                // 🌟 全ユーザーの中からこの駅の所持者を割り出してリストアップ！
+                let owners = [];
+                Object.keys(allUserData).sort().forEach(uName => {
+                    let ownStations = (allUserData[uName] && allUserData[uName].myOwnStations) || [];
+                    if (ownStations.includes(fullName)) {
+                        owners.push(uName === currentUser ? `${uName}(自分)` : uName);
+                    }
+                });
+
+                let ownerDiv = document.createElement("div");
+                ownerDiv.style.fontSize = "12px";
+                ownerDiv.style.marginTop = "3px";
+                if (owners.length > 0) {
+                    ownerDiv.innerHTML = `👥 所持者: <span style="background-color: #e8f8f5; color: #00a497; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: inline-block;">${owners.join(", ")}</span>`;
+                } else {
+                    ownerDiv.innerHTML = `👥 所持者: <span style="color: #999; font-style: italic;">誰も持っていません</span>`;
                 }
+                li.appendChild(ownerDiv);
 
-                let detail = combinedStationsList.find(s => s.name === name && s.company === company) || { kana: "ん", pref: "未登録", company: company, subName: "" };
-                let firstChar = (detail.kana && detail.kana.length > 0) ? detail.kana.charAt(0) : "？";
-                let lastChar = (detail.kana && detail.kana.length > 0) ? detail.kana.charAt(detail.kana.length - 1) : "？";
+                let btnGroup = document.createElement("div");
+                btnGroup.className = "btn-group";
 
-                kanaCounts[firstChar] = (kanaCounts[firstChar] || 0) + 1;
-                kanaEndCounts[lastChar] = (kanaEndCounts[lastChar] || 0) + 1; 
-                if(detail.pref) prefCounts[detail.pref] = (prefCounts[detail.pref] || 0) + 1;
-                if(detail.company) companyCounts[detail.company] = (companyCounts[detail.company] || 0) + 1;
-
-                return {
-                    fullName: fullName,
-                    originalIndex: index,
-                    name: name,
-                    kana: detail.kana || "",
-                    pref: detail.pref || "未登録",
-                    company: detail.company || "",
-                    line: detail.line || "未設定",
-                    subName: detail.subName || ""
+                let memoBtn = document.createElement("button");
+                memoBtn.className = "add-memo-btn";
+                memoBtn.textContent = "📝 一時リスト";
+                memoBtn.onclick = () => {
+                    if (!stationMemo.includes(fullName)) {
+                        stationMemo.push(fullName);
+                        updateMemoList();
+                    }
                 };
+                btnGroup.appendChild(memoBtn);
+
+                let ownNames = getOwnStationsArray(currentUser);
+                let ownBtn = document.createElement("button");
+                ownBtn.className = "own-btn";
+                if (ownNames.includes(fullName)) {
+                    ownBtn.textContent = "🌟 登録済";
+                    ownBtn.style.backgroundColor = "#e67e22";
+                    ownBtn.style.color = "white";
+                    ownBtn.disabled = true;
+                } else {
+                    ownBtn.textContent = "⭐ マイ駅";
+                    ownBtn.onclick = () => addOwnStation(fullName);
+                }
+                btnGroup.appendChild(ownBtn);
+
+                li.appendChild(btnGroup);
+                ul.appendChild(li);
             });
 
-            const renderStats = (targetId, countsObj, prefix = "", suffix = "") => {
-                let sortedKeys = Object.keys(countsObj).sort((a, b) => b.localeCompare ? a.localeCompare(b, 'ja') : 0);
-                if(sortedKeys.length === 0) {
-                    document.getElementById(targetId).innerHTML = "<div>データがありません</div>";
-                    return;
-                }
-                let html = sortedKeys.map(key => `<div><strong>${prefix}${key}${suffix}:</strong> ${countsObj[key]}駅</div>`).join("");
-                document.getElementById(targetId).innerHTML = html;
-            };
+            if (results.length > 200) {
+                let moreLi = document.createElement("li");
+                moreLi.style.color = "#7f8c8d";
+                moreLi.style.textAlign = "center";
+                moreLi.style.fontSize = "12px";
+                moreLi.textContent = "※件数が多いため上位200件のみ表示しています。";
+                ul.appendChild(moreLi);
+            }
+        }
+
+        function addStation() {
+            let input = document.getElementById("stationInput");
+            let name = input.value.trim();
+            if (name === "") return;
+            if (!stationMemo.includes(name)) {
+                stationMemo.push(name);
+                updateMemoList();
+            }
+            input.value = "";
+        }
+
+        function updateMemoList() {
+            let ul = document.getElementById("memoList");
+            ul.innerHTML = "";
+            document.getElementById("memoCount").textContent = stationMemo.length;
+
+            stationMemo.forEach((name, index) => {
+                let li = document.createElement("li");
+                li.style.flexDirection = "row";
+                li.style.justifyContent = "space-between";
+                li.style.alignItems = "center";
+                li.style.padding = "6px 10px";
+                li.style.marginBottom = "4px";
+
+                let span = document.createElement("span");
+                span.textContent = name;
+                li.appendChild(span);
+
+                let delBtn = document.createElement("button");
+                delBtn.className = "delete-btn";
+                delBtn.style.padding = "2px 6px";
+                delBtn.style.fontSize = "11px";
+                delBtn.textContent = "削除";
+                delBtn.onclick = () => {
+                    stationMemo.splice(index, 1);
+                    updateMemoList();
+                };
+                li.appendChild(delBtn);
+                ul.appendChild(li);
+            });
+        }
+
+        function copyForLine() {
+            if (stationMemo.length === 0) { alert("リストが空っぽです。"); return; }
+            let text = stationMemo.join("\n");
+            navigator.clipboard.writeText(text).then(() => {
+                alert("クリップボードにコピーしました！");
+            }).catch(() => { alert("コピーに失敗しました。"); });
+        }
+
+        const renderStats = (targetId, countsObj, prefix = "", suffix = "", sortType = "default") => {
+            let sortedKeys = Object.keys(countsObj);
+
+            if (sortType === "default") {
+                sortedKeys.sort((a, b) => a.localeCompare(b, 'ja'));
+            } 
+            else if (sortType === "pref") {
+                sortedKeys.sort((a, b) => getPrefIndex(a) - getPrefIndex(b));
+            } 
+            else if (sortType === "count") {
+                sortedKeys.sort((a, b) => {
+                    if (countsObj[b] === countsObj[a]) return a.localeCompare(b, 'ja');
+                    return countsObj[b] - countsObj[a];
+                });
+            }
+
+            if(sortedKeys.length === 0) {
+                document.getElementById(targetId).innerHTML = "<div>データがありません</div>";
+                return;
+            }
+            let html = sortedKeys.map(key => `<div><strong>${prefix}${key}${suffix}:</strong> ${countsObj[key]}駅</div>`).join("");
+            document.getElementById(targetId).innerHTML = html;
+        };
+
+        function updateOwnList() {
+            if (!currentUser) return;
             
-            renderStats("statsKana", kanaCounts, "", "〜");
-            renderStats("statsKanaEnd", kanaEndCounts, "〜", ""); 
-            renderStats("statsPref", prefCounts);
-            renderStats("statsCompany", companyCounts);
+            let targetUser = viewedUser || currentUser;
+            let myOwnNames = getOwnStationsArray(targetUser);
+            
+            let kanaCounts = {};
+            let kanaEndCounts = {};
+            let prefCounts = {};
+            let companyCounts = {};
+            
+            let listData = [];
+
+            let targetCustoms = (allUserData[targetUser] && allUserData[targetUser].customStations) ? allUserData[targetUser].customStations : [];
+            let lookupList = allStations.concat(targetCustoms);
+
+            myOwnNames.forEach(fullName => {
+                let stationObj = lookupList.find(s => `${s.name}（${s.company}）` === fullName);
+                
+                if (!stationObj) {
+                    let idx = fullName.indexOf("（");
+                    let name = idx !== -1 ? fullName.substring(0, idx) : fullName;
+                    let company = idx !== -1 ? fullName.substring(idx + 1, fullName.length - 1) : "";
+                    stationObj = { name: name, company: company, kana: "", pref: "不明", line: "", subName: "" };
+                }
+
+                let firstKana = stationObj.kana ? stationObj.kana.charAt(0) : "？";
+                let lastKana = stationObj.kana ? stationObj.kana.slice(-1) : "？";
+                
+                kanaCounts[firstKana] = (kanaCounts[firstKana] || 0) + 1;
+                kanaEndCounts[lastKana] = (kanaEndCounts[lastKana] || 0) + 1;
+                prefCounts[stationObj.pref] = (prefCounts[stationObj.pref] || 0) + 1;
+                companyCounts[stationObj.company] = (companyCounts[stationObj.company] || 0) + 1;
+
+                listData.push({ ...stationObj, fullName: fullName });
+            });
+
+            document.getElementById("ownCount").textContent = listData.length;
+
+            renderStats("statsKana", kanaCounts, "", "〜", "default");
+            renderStats("statsKanaEnd", kanaEndCounts, "〜", "", "default"); 
+            renderStats("statsPref", prefCounts, "", "", "pref");
+            renderStats("statsCompany", companyCounts, "", "", "count");
 
             let keyword = document.getElementById("myOwnSearchInput").value.trim().toLowerCase();
             if (keyword !== "") {
@@ -873,194 +1160,51 @@
 
             listData.sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
 
+            let ul = document.getElementById("myOwnStationsList");
+            ul.innerHTML = "";
+
+            if (listData.length === 0) {
+                ul.innerHTML = '<li style="color:#7f8c8d; text-align:center;">駅がありません</li>';
+                return;
+            }
+
             for (let i = 0; i < listData.length; i++) {
                 let item = listData[i];
                 let li = document.createElement("li");
                 
                 let details = document.createElement("details");
                 let summary = document.createElement("summary");
-                summary.style.cursor = "pointer"; summary.style.fontWeight = "bold";
+                summary.style.cursor = "pointer"; 
+                summary.style.fontWeight = "bold";
                 summary.textContent = `${item.fullName} 🔽`;
                 details.appendChild(summary);
 
-                let infoDiv = document.createElement("div");
-                infoDiv.style.marginTop = "10px"; infoDiv.style.padding = "10px"; infoDiv.style.backgroundColor = "#f4faf9"; infoDiv.style.borderRadius = "6px"; infoDiv.style.fontSize = "13px";
-                
-                let infoHtml = `<strong>ふりがな:</strong> ${item.kana}<br>`;
-                if (item.subName) infoHtml += `<strong>副駅名:</strong> ${item.subName}<br>`;
-                infoHtml += `<strong>路線:</strong> ${item.line}<br><strong>都道府県:</strong> ${item.pref}`;
-                infoDiv.innerHTML = infoHtml;
-                details.appendChild(infoDiv);
+                let div = document.createElement("div");
+                div.style.fontSize = "14px";
+                div.style.color = "#555";
+                div.style.marginTop = "5px";
+                div.innerHTML = `
+                    <div><strong>かな:</strong> ${item.kana}</div>
+                    <div><strong>都道府県:</strong> ${item.pref}</div>
+                    <div><strong>路線:</strong> ${item.line}</div>
+                    ${item.subName ? `<div><strong>副駅名:</strong> ${item.subName}</div>` : ''}
+                `;
+                details.appendChild(div);
                 li.appendChild(details);
 
-                if (isEditMode) {
-                    let btnGroup = document.createElement("div"); btnGroup.className = "btn-group";
-                    let deleteBtn = document.createElement("button");
-                    deleteBtn.textContent = "削除"; deleteBtn.className = "delete-btn";
-                    deleteBtn.onclick = function() {
-                        if(confirm(`「${item.name}」をマイ駅から削除しますか？`)) {
-                            let currentStations = [...getOwnStationsArray()];
-                            let removeIdx = currentStations.indexOf(item.fullName);
-                            if(removeIdx !== -1) { currentStations.splice(removeIdx, 1); saveOwnStationsArray(currentStations); }
-                        }
-                    };
-                    btnGroup.appendChild(deleteBtn);
+                if (isEditMode && targetUser === currentUser) {
+                    let btnGroup = document.createElement("div");
+                    btnGroup.className = "btn-group";
+                    let delBtn = document.createElement("button");
+                    delBtn.className = "delete-btn";
+                    delBtn.textContent = "削除";
+                    delBtn.onclick = () => removeOwnStation(item.fullName);
+                    btnGroup.appendChild(delBtn);
                     li.appendChild(btnGroup);
                 }
-                ownList.appendChild(li);
+
+                ul.appendChild(li);
             }
-        }
-
-        function searchStations() {
-            let searchInput = document.getElementById("searchInput").value.trim();
-            let searchType = document.getElementById("searchType").value;
-            let searchResults = document.getElementById("searchResults");
-            let titleCountSpan = document.getElementById("searchResultTitleCount");
-            
-            searchResults.innerHTML = "";
-            if (searchInput === "") { alert("キーワードを入力してね！"); titleCountSpan.textContent = ""; return; }
-
-            let cName = document.getElementById("checkName").checked;
-            let cKana = document.getElementById("checkKana").checked;
-            let cCompany = document.getElementById("checkCompany").checked;
-            let cLine = document.getElementById("checkLine").checked;
-            let cPref = document.getElementById("checkPref").checked;
-            let cSub = document.getElementById("checkSub").checked; 
-            let cOnlyOwn = document.getElementById("checkOnlyOwn").checked;
-
-            if (!cName && !cKana && !cCompany && !cLine && !cPref && !cSub) { alert("項目をどれか1つは選んでね！"); titleCountSpan.textContent = ""; return; }
-            
-            let keywords = searchInput.split(/[\s,  ]+/);
-            let nameMatches = []; let otherMatches = [];
-            let myOwnStations = getOwnStationsArray();
-
-            for (let i = 0; i < combinedStationsList.length; i++) {
-                let station = combinedStationsList[i];
-                if (cOnlyOwn) {
-                    let fullNameKey = `${station.name}（${station.company}）`;
-                    if (!myOwnStations.includes(fullNameKey)) continue;
-                }
-
-                let isMatch = false; let matchedByStationName = false;
-
-                for (let k = 0; k < keywords.length; k++) {
-                    let kw = keywords[k]; if (kw === "") continue;
-
-                    if (searchType === "length") {
-                        let targetLength = parseInt(kw, 10);
-                        if (isNaN(targetLength)) { alert("数字を入力してね！"); return; }
-                        let nameLen = (cName && station.name.length === targetLength);
-                        let kanaLen = (cKana && station.kana.length === targetLength);
-                        let compLen = (cCompany && station.company.length === targetLength);
-                        let lineLen = (cLine && station.line.length === targetLength);
-                        let prefLen = (cPref && station.pref.length === targetLength);
-                        let subLen = (cSub && station.subName && station.subName.length === targetLength);
-
-                        if (nameLen || kanaLen || compLen || lineLen || prefLen || subLen) { isMatch = true; if (nameLen) matchedByStationName = true; break; }
-                        continue;
-                    }
-
-                    function checkText(text) {
-                        if (!text) return false;
-                        if (searchType === "partial") return text.includes(kw);
-                        if (searchType === "forward") return text.startsWith(kw);
-                        if (searchType === "backward") return text.endsWith(kw);
-                        if (searchType === "exact") return text === kw;
-                        if (searchType === "forward_backward") {
-                            if (kw.length < 2) return text.includes(kw);
-                            return text.startsWith(kw.charAt(0)) && text.endsWith(kw.charAt(kw.length - 1));
-                        }
-                        return false;
-                    }
-
-                    let hit = false; let nameHit = false;
-                    if (cName) nameHit = checkText(station.name);
-                    if (cKana) hit = checkText(station.kana);
-                    if (cCompany) hit = checkText(station.company);
-                    if (cLine) hit = checkText(station.line);
-                    if (cPref) hit = checkText(station.pref);
-                    if (cSub) hit = checkText(station.subName);
-
-                    if (nameHit || hit) { isMatch = true; if (nameHit) matchedByStationName = true; break; }
-                }
-                if (isMatch) { if (matchedByStationName) nameMatches.push(station); else otherMatches.push(station); }
-            }
-
-            let finalResults = nameMatches.concat(otherMatches);
-
-            if (finalResults.length > 0) {
-                titleCountSpan.textContent = `（${finalResults.length}件）`;
-                titleCountSpan.style.color = "#00a497"; titleCountSpan.style.fontSize = "16px";
-            } else {
-                titleCountSpan.textContent = "（0件）"; titleCountSpan.style.color = "#7f8c8d";
-            }
-
-            for (let i = 0; i < finalResults.length; i++) {
-                let station = finalResults[i];
-                let li = document.createElement("li");
-
-                let details = document.createElement("details");
-                let summary = document.createElement("summary");
-                summary.style.cursor = "pointer"; summary.style.fontWeight = "bold";
-                summary.textContent = `${station.name} （${station.company}） 🔽`;
-                details.appendChild(summary);
-
-                let infoDiv = document.createElement("div");
-                infoDiv.style.marginTop = "10px"; infoDiv.style.padding = "10px"; infoDiv.style.backgroundColor = "#eaf2f1"; infoDiv.style.borderRadius = "6px"; infoDiv.style.fontSize = "14px";
-                
-                let infoHtml = `<strong>ふりがな:</strong> ${station.kana}<br>`;
-                if (station.subName) infoHtml += `<strong>副駅名:</strong> ${station.subName}<br>`;
-                infoHtml += `<strong>鉄道会社:</strong> ${station.company}<br><strong>路線:</strong> ${station.line}<br><strong>都道府県:</strong> ${station.pref}`;
-                infoDiv.innerHTML = infoHtml;
-                details.appendChild(infoDiv);
-                li.appendChild(details);
-                
-                let btnGroup = document.createElement("div"); btnGroup.className = "btn-group";
-                let fullName = `${station.name}（${station.company}）`;
-
-                let memoButton = document.createElement("button"); memoButton.textContent = "リスト追加"; memoButton.className = "add-memo-btn";
-                memoButton.onclick = function() { stationMemo.push(fullName); updateList(); alert(`「${station.name}」をリストに追加しました！`); };
-                btnGroup.appendChild(memoButton);
-
-                let ownButton = document.createElement("button"); ownButton.textContent = "マイ駅追加"; ownButton.className = "own-btn";
-                ownButton.onclick = function() { addOwnStation(fullName); };
-                btnGroup.appendChild(ownButton);
-
-                li.appendChild(btnGroup);
-                searchResults.appendChild(li);
-            }
-            if (searchResults.innerHTML === "") searchResults.innerHTML = "<li>見つかりませんでした</li>";
-        }
-
-        function addStation() {
-            let inputArea = document.getElementById("stationInput");
-            let stationName = inputArea.value.trim();
-            if (stationName === "") { alert("駅名を入力してね！"); return; }
-            stationMemo.push(stationName);
-            updateList();
-            inputArea.value = "";
-        }
-
-        function updateList() {
-            let memoList = document.getElementById("memoList"); memoList.innerHTML = "";
-            document.getElementById("memoCount").textContent = stationMemo.length; // 駅数をカウント表示
-            
-            for (let i = 0; i < stationMemo.length; i++) {
-                let li = document.createElement("li");
-                li.style.flexDirection = "row"; li.style.justifyContent = "space-between"; li.style.alignItems = "center";
-                let span = document.createElement("span"); span.textContent = stationMemo[i]; li.appendChild(span);
-                let deleteButton = document.createElement("button"); deleteButton.textContent = "× 削除"; deleteButton.className = "delete-btn";
-                deleteButton.onclick = function(e) { e.preventDefault(); stationMemo.splice(i, 1); updateList(); };
-                li.appendChild(deleteButton);
-                memoList.appendChild(li);
-            }
-        }
-
-        function copyForLine() {
-            if (stationMemo.length === 0) { alert("まだ駅名がメモされていません！"); return; }
-            let textForLine = "【提出駅】\n" + stationMemo.join("\n");
-            navigator.clipboard.writeText(textForLine);
-            alert("コピーしました！");
         }
     </script>
 </body>
