@@ -626,7 +626,7 @@ const allStations = [
   { name: "伊豆急下田", kana: "いずきゅうしもだ", pref: "静岡県", company: "伊豆急行", line: "伊豆急行線", subName: "" },
   { name: "伊豆高原", kana: "いずこうげん", pref: "静岡県", company: "伊豆急行", line: "伊豆急行線", subName: "" },
   { name: "五十鈴ケ丘", kana: "いすずがおか", pref: "三重県", company: "東海旅客鉄道", line: "参宮線", subName: "" },
-  { name: "五十鈴川", kana: "いすずがおか", pref: "三重県", company: "近畿日本鉄道", line: "鳥羽線", subName: "" },
+  { name: "五十鈴川", kana: "いすずがわ", pref: "三重県", company: "近畿日本鉄道", line: "鳥羽線", subName: "" },
   { name: "伊豆多賀", kana: "いずたが", pref: "静岡県", company: "東日本旅客鉄道", line: "伊東線", subName: "" },
   { name: "伊豆長岡", kana: "いずながおか", pref: "静岡県", company: "伊豆箱根鉄道", line: "駿豆線", subName: "" },
   { name: "伊豆仁田", kana: "いずにった", pref: "静岡県", company: "伊豆箱根鉄道", line: "駿豆線", subName: "" },
