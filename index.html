@@ -80,7 +80,7 @@
             font-size: 11px;
             font-weight: bold;
             cursor: pointer;
-            width: 33.3%;
+            width: 25%;
             height: 100%;
             padding: 0;
             margin: 0;
@@ -117,7 +117,7 @@
             flex-grow: 1;
         }
 
-        input[type="text"], input[type="password"], select {
+        input[type="text"], input[type="password"], input[type="number"], select, textarea {
             padding: 12px;
             font-size: 16px;
             border: 2px solid #b2d8d8;
@@ -128,7 +128,7 @@
             background-color: #fafafa;
         }
 
-        input[type="text"]:focus, input[type="password"]:focus {
+        input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, textarea:focus {
             border-color: #008080;
             background-color: #fff;
         }
@@ -279,6 +279,76 @@
             box-shadow: inset 0 1px 4px rgba(0,0,0,0.05);
         }
 
+        /* 👑 企画モード用のスタイル */
+        .game-display {
+            background-color: #2c3e50;
+            color: #ffffff;
+            padding: 20px 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 15px;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 3px 10px rgba(0,0,0,0.3);
+            border: 2px solid #34495e;
+        }
+        .game-score-table {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+        }
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .score-btn {
+            background-color: #00a497;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .score-btn.minus { background-color: #e74c3c; }
+
+        /* 👑 新履歴用スタイル */
+        .game-log-box {
+            margin-top: 10px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #b2d8d8;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: monospace;
+            line-height: 2.2;
+            color: #333;
+        }
+        .hist-char {
+            display: inline-block;
+            margin: 0 2px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            user-select: none;
+            transition: 0.2s;
+        }
+        .hist-char:active {
+            background-color: #d1e7e4 !important;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -301,7 +371,6 @@
         </div>
 
         <div id="pageSearch" class="page-content">
-            
             <details style="margin-bottom: 15px; background: #eef7f5; padding: 10px; border-radius: 8px; border: 1px solid #b2d8d8;">
                 <summary style="cursor: pointer; font-weight: bold; color: #008080; font-size: 15px;">📋 提出用の一時リストを開く (<span id="memoCount">0</span>駅)</summary>
                 <div class="search-container" style="background: white; margin-top: 10px; padding: 10px;">
@@ -427,6 +496,89 @@
             <ul id="myOwnStationsList"></ul>
         </div>
 
+        <div id="pageGame" class="page-content">
+            <h2>🎮 文字企画</h2>
+            
+            <div class="search-container" style="background: #eaf2f1; padding: 12px;">
+                <p style="margin: 0 0 6px 0; font-weight: bold; color: #006666; font-size: 14px;">⚙️ 企画ルール設定</p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 11px; color: #555; font-weight: bold;">モード</label>
+                        <select id="gameModeOption" style="padding: 6px; font-size: 13px; margin-top: 4px;">
+                            <option value="rand">駅名乱数</option>
+                            <option value="jouyo">常用漢字</option>
+                            <option value="all">全駅文字</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #555; font-weight: bold;">対戦形式</label>
+                        <select id="gameTypeOption" onchange="toggleGameTypeUI()" style="padding: 6px; font-size: 13px; margin-top: 4px;">
+                            <option value="individual">個人戦</option>
+                            <option value="team">チーム戦</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: #555; font-weight: bold;">副駅名</label>
+                        <select id="gameSubOption" onchange="initGamePools()" style="padding: 6px; font-size: 13px; margin-top: 4px;">
+                            <option value="no">なし</option>
+                            <option value="yes">あり</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size: 11px; color: #555; font-weight: bold;">追加のルール説明（自由入力欄）</label>
+                    <textarea id="gameCustomRulesInput" rows="2" style="padding: 6px; font-size: 13px; margin-top: 4px;" placeholder="例：パスは3回まで、1ターン30秒、等..."></textarea>
+                </div>
+            </div>
+
+            <div id="gameOdaisDisplay" class="game-display">
+                <span style="color:#bdc3c7;">ボタンを押してお題を引いてね！</span>
+            </div>
+
+            <button class="action-btn" onclick="drawGameOdai()" style="font-size: 16px; padding: 14px; background-color: #2980b9; margin-bottom: 12px; box-shadow: 0 4px 0 #1f618d;">🎲 お題を引く</button>
+            <button class="action-btn" onclick="copyLastOdai()" style="background-color: #00a497; font-size: 14px; padding: 10px; margin-bottom: 12px;">📋 お題をコピー</button>
+            <button class="action-btn" onclick="copyGameResult()" style="background-color: #34495e; font-size: 14px; padding: 10px; margin-bottom: 20px;">📋 リザルトをコピー</button>
+
+            <h2>👥 メンバー・得点管理</h2>
+            <div class="game-score-table">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #eaf2f1; padding-bottom: 8px;">
+                    <span style="font-weight: bold; font-size: 14px; color: #34495e;">現在のターン数（自動カウント）</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="score-btn minus" onclick="changeTurn(-1)" style="width:26px; height:26px; font-size:12px;">ー</button>
+                        <span id="gameTurnSpan" style="font-size: 18px; font-weight: bold; min-width: 20px; text-align: center;">0</span>
+                        <button class="score-btn" onclick="changeTurn(1)" style="width:26px; height:26px; font-size:12px;">＋</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; background: #fafafa; padding: 10px; border-radius: 8px; border: 1px solid #eaf2f1;">
+                    <div style="display: flex; gap: 6px;">
+                        <div style="flex: 1;">
+                            <label id="gamePlayerNameLabel" style="font-size: 11px; font-weight: bold; color: #555;">プレイヤー名</label>
+                            <input type="text" id="gamePlayerInput" placeholder="名前を入力..." style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8; border-radius: 6px;">
+                        </div>
+                        <div id="gameTeamMembersGroup" class="hidden" style="flex: 1.5;">
+                            <label style="font-size: 11px; font-weight: bold; color: #555;">チームメンバー（カンマ区切り）</label>
+                            <input type="text" id="gamePlayerMembersInput" placeholder="Aくん, Bさん, Cくん" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8; border-radius: 6px;">
+                        </div>
+                    </div>
+                    <button class="action-btn" onclick="addParticipant()" style="padding: 8px; font-size: 14px; background-color: #34495e;">➕ 参加枠を追加</button>
+                </div>
+
+                <ul id="gamePlayerList" style="margin-bottom: 5px;"></ul>
+            </div>
+
+            <div class="search-container" style="background: white; padding: 12px; margin-bottom: 15px;">
+                <p style="margin: 0 0 4px 0; font-weight: bold; font-size: 13px; color: #7f8c8d;">📜 これまでの文字履歴 <span style="font-size:11px; font-weight:normal; color:#e67e22;">(チーム戦時：タップで獲得状況切り替え)</span></p>
+                <div id="gameHistoryDiv" class="game-log-box">まだお題を引いていません</div>
+                
+                <div id="teamTogglePanelContainer" class="hidden" style="margin-top: 10px; background: #eaf2f1; border: 2px solid #00a497; padding: 10px; border-radius: 8px;"></div>
+            </div>
+
+            <div>
+                <button class="action-btn" onclick="resetGame()" style="background-color: #e74c3c; font-size: 14px; padding: 12px;">🔄 リセット</button>
+            </div>
+        </div>
+
         <div id="pageSettings" class="page-content">
             <h2>👤 アカウント情報</h2>
             <div class="search-container" style="background: #e2f0ed;">
@@ -489,6 +641,10 @@
             <span class="icon">🌟</span>
             <span>マイ駅</span>
         </button>
+        <button class="nav-item" onclick="switchPage('game')">
+            <span class="icon">🎮</span>
+            <span>企画</span>
+        </button>
         <button class="nav-item" onclick="switchPage('settings')">
             <span class="icon">⚙️</span>
             <span>設定</span>
@@ -515,7 +671,17 @@
         let isEditMode = false; 
         let combinedStationsList = []; 
         let allUserData = {};
-        let globallySortedOwnNames = []; // ✨ 一括コピー等で使い回すための五十音順データ保持用
+        let globallySortedOwnNames = []; 
+
+        // 👑 企画用グローバル変数
+        let gameHistory = []; 
+        let gameParticipants = []; 
+        let lastOdaiText = "";
+        let gameTurn = 0;
+        let slotInterval = null;
+        let cachedAllChars = [];
+        let cachedKanjiChars = [];
+        let selectedHistoryIndex = null; 
 
         const prefOrder = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"];
         function getPrefIndex(prefName) {
@@ -555,6 +721,7 @@
 
             document.getElementById("pageSearch").classList.remove("active");
             document.getElementById("pageMyList").classList.remove("active");
+            document.getElementById("pageGame").classList.remove("active");
             document.getElementById("pageSettings").classList.remove("active");
             document.getElementById("loginGatePage").classList.remove("active");
 
@@ -580,9 +747,14 @@
                 refreshCombinedStations();
                 updateUserSelect();
                 updateOwnList();
+            } else if (pageName === 'game') {
+                document.getElementById("pageGame").classList.add("active");
+                navItems[2].classList.add("active");
+                initGamePools();
+                toggleGameTypeUI();
             } else if (pageName === 'settings') {
                 document.getElementById("pageSettings").classList.add("active");
-                navItems[2].classList.add("active");
+                navItems[3].classList.add("active");
             }
             window.scrollTo(0, 0);
         }
@@ -778,6 +950,7 @@
             document.getElementById("bottomNavBar").classList.add("hidden");
             document.getElementById("pageSearch").classList.remove("active");
             document.getElementById("pageMyList").classList.remove("active");
+            document.getElementById("pageGame").classList.remove("active");
             document.getElementById("pageSettings").classList.remove("active");
             document.getElementById("loginGatePage").classList.add("active");
             
@@ -883,7 +1056,6 @@
             saveOwnStationsArray(myOwnStations);
         }
 
-        // ✨【修正】一括コピーボタンも、最新の五十音順配列(globallySortedOwnNames)を使って書き出します
         function copyAllOwnStations() {
             let targetUser = viewedUser || currentUser;
             if (globallySortedOwnNames.length === 0) { alert("コピーするマイ駅がありません。"); return; }
@@ -1204,20 +1376,17 @@
                 kanaCounts[firstKana] = (kanaCounts[firstKana] || 0) + 1;
                 kanaEndCounts[lastKana] = (kanaEndCounts[lastKana] || 0) + 1;
                 prefCounts[stationObj.pref] = (prefCounts[stationObj.pref] || 0) + 1;
-                companyCounts[stationObj.company] = (companyCounts[stationObj.company] || 0) + 1;
+                companyCounts[stationObj.company] = (companyCounts[companyCounts] || 0) + 1;
 
                 listData.push({ ...stationObj, fullName: fullName });
             });
 
             document.getElementById("ownCount").textContent = listData.length;
 
-            // 確定ソート（ふりがな順）
             listData.sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
 
-            // ✨【修正】ここで生成した五十音順の配列を、グローバル変数に退避
             globallySortedOwnNames = listData.map(item => item.fullName);
 
-            // コピー領域の描画（すべて五十音順になった globallySortedOwnNames を使用）
             let splitContainer = document.getElementById("splitCopyContainer");
             let backupTextarea = document.getElementById("backupTextArea");
             if (splitContainer && backupTextarea) {
@@ -1308,6 +1477,473 @@
 
                 ul.appendChild(li);
             }
+        }
+
+        // 👑 企画用のプール作成
+        function initGamePools() {
+            refreshCombinedStations();
+            let includeSub = document.getElementById("gameSubOption").value === "yes";
+            let charSet = new Set();
+            
+            combinedStationsList.forEach(s => {
+                if (s.name) {
+                    for (let c of s.name) charSet.add(c);
+                }
+                if (includeSub && s.subName) {
+                    for (let c of s.subName) charSet.add(c);
+                }
+            });
+            
+            cachedAllChars = Array.from(charSet).filter(c => c.trim() !== "");
+            cachedKanjiChars = cachedAllChars.filter(c => /^[\u4E00-\u9FFF]$/.test(c));
+        }
+
+        // 👑 对战形式UIの表示切り替え
+        function toggleGameTypeUI() {
+            let type = document.getElementById("gameTypeOption").value;
+            let membersGroup = document.getElementById("gameTeamMembersGroup");
+            let nameLabel = document.getElementById("gamePlayerNameLabel");
+            
+            if (type === "team") {
+                membersGroup.classList.remove("hidden");
+                nameLabel.textContent = "チーム名";
+            } else {
+                membersGroup.classList.add("hidden");
+                nameLabel.textContent = "プレイヤー名";
+            }
+            renderParticipants();
+            updateGameHistoryDisplay();
+        }
+
+        // 👑 統合お題ガチャ発火
+        function drawGameOdai() {
+            let mode = document.getElementById("gameModeOption").value;
+            if (mode === "rand") {
+                drawStationRand();
+            } else if (mode === "jouyo") {
+                drawJouyoKanji();
+            } else if (mode === "all") {
+                drawAllChar();
+            }
+        }
+
+        // 👑 ガチャ：駅名乱数モード
+        function drawStationRand() {
+            if (slotInterval) return;
+            refreshCombinedStations();
+            let includeSub = document.getElementById("gameSubOption").value === "yes";
+            
+            let namePool = [];
+            combinedStationsList.forEach(s => {
+                if (s.name) namePool.push({ mainName: s.name, displayName: `${s.name}（${s.company}）` });
+                if (includeSub && s.subName) namePool.push({ mainName: s.subName, displayName: `${s.subName}（${s.company}・副駅名）` });
+            });
+            
+            if (namePool.length === 0) { alert("対象データがありません。"); return; }
+            
+            let target = namePool[Math.floor(Math.random() * namePool.length)];
+            let len = target.mainName.length;
+            let randIdx = Math.floor(Math.random() * len) + 1;
+            let finalChar = target.mainName.charAt(randIdx - 1);
+            
+            startSlotAnimation("rand", target.displayName, randIdx, finalChar);
+        }
+
+        // 👑 ガチャ：常用漢字モード
+        function drawJouyoKanji() {
+            if (slotInterval) return;
+            initGamePools();
+            if (cachedKanjiChars.length === 0) { alert("漢字を抽出できませんでした。"); return; }
+            
+            let finalChar = cachedKanjiChars[Math.floor(Math.random() * cachedKanjiChars.length)];
+            startSlotAnimation("jouyo", "", 0, finalChar);
+        }
+
+        // 👑 ガチャ：全駅文字モード
+        function drawAllChar() {
+            if (slotInterval) return;
+            initGamePools();
+            if (cachedAllChars.length === 0) { alert("文字を抽出できませんでした。"); return; }
+            
+            let finalChar = cachedAllChars[Math.floor(Math.random() * cachedAllChars.length)];
+            startSlotAnimation("all", "", 0, finalChar);
+        }
+
+        // 👑 3秒間のパタパタアニメーション（100ms間隔×30回＝3秒）
+        function startSlotAnimation(type, finalStation, finalIndex, finalChar) {
+            let count = 0;
+            let displayEl = document.getElementById("gameOdaisDisplay");
+            if (slotInterval) clearInterval(slotInterval);
+            
+            // パネルを閉じる
+            selectedHistoryIndex = null;
+            renderTeamTogglePanel();
+
+            slotInterval = setInterval(() => {
+                count++;
+                if (type === "rand") {
+                    let randStation = combinedStationsList[Math.floor(Math.random() * combinedStationsList.length)];
+                    let randIdx = Math.floor(Math.random() * randStation.name.length) + 1;
+                    let randChar = randStation.name.charAt(randIdx - 1) || "？";
+                    displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">${randStation.name}</span><br><b style="font-size:24px; color:#f1c40f;">${randIdx}文字目 → 「${randChar}」</b>`;
+                } else if (type === "jouyo") {
+                    let randChar = cachedKanjiChars[Math.floor(Math.random() * cachedKanjiChars.length)] || "駅";
+                    displayEl.innerHTML = `<span style="font-size:12px; color:#bdc3c7;">常用漢字スロット</span><br><b style="font-size:32px; color:#f1c40f;">「${randChar}」</b>`;
+                } else {
+                    let randChar = cachedAllChars[Math.floor(Math.random() * cachedAllChars.length)] || "あ";
+                    displayEl.innerHTML = `<span style="font-size:12px; color:#bdc3c7;">全文字スロット</span><br><b style="font-size:32px; color:#f1c40f;">「${randChar}」</b>`;
+                }
+                
+                if (count >= 30) { 
+                    clearInterval(slotInterval);
+                    slotInterval = null;
+                    
+                    let modeTitle = "";
+                    if (type === "rand") {
+                        displayEl.innerHTML = `<span style="font-size:15px; color:#ecf0f1; font-weight:bold;">🎲 ${finalStation}</span><br><b style="font-size:30px; color:#1abc9c;">${finalIndex}文字目 → 「${finalChar}」</b>`;
+                        modeTitle = "駅名乱数モード";
+                        lastOdaiText = `駅名乱数モード\n${finalStation} ${finalIndex}文字目 → 「${finalChar}」`;
+                    } else if (type === "jouyo") {
+                        displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">🏮 常用漢字モード</span><br><b style="font-size:38px; color:#1abc9c;">「${finalChar}」</b>`;
+                        modeTitle = "常用漢字モード";
+                        lastOdaiText = `常用漢字モード\n「${finalChar}」`;
+                    } else {
+                        displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">🌍 全駅文字モード</span><br><b style="font-size:38px; color:#1abc9c;">「${finalChar}」</b>`;
+                        modeTitle = "全駅文字モード";
+                        lastOdaiText = `全駅文字モード\n「${finalChar}」`;
+                    }
+                    
+                    // 履歴にデータを格納（チーム戦用にwonTeams配列を持たせる）
+                    gameHistory.push({ mode: modeTitle, char: finalChar, wonTeams: [] });
+                    
+                    // ターン数を自動インクリメント（0から1になる）
+                    gameTurn++;
+                    document.getElementById("gameTurnSpan").textContent = gameTurn;
+                    
+                    updateGameHistoryDisplay();
+                }
+            }, 100); 
+        }
+
+        // 👑 履歴表示（5文字ごと改行、10/20カウント、チーム戦装飾）
+        function updateGameHistoryDisplay() {
+            let el = document.getElementById("gameHistoryDiv");
+            if (!el) return;
+            if (gameHistory.length === 0) { el.textContent = "まだお題を引いていません"; return; }
+            
+            let isTeamMode = document.getElementById("gameTypeOption").value === "team";
+            let html = "";
+            
+            for (let i = 0; i < gameHistory.length; i++) {
+                let h = gameHistory[i];
+                let hasWon = isTeamMode && h.wonTeams && h.wonTeams.length > 0;
+                
+                // 誰かが出した文字は緑のバッジ風にする
+                let bgStyle = hasWon ? "background-color: #d1f2eb; color: #117a65; border: 1px solid #a3e4d7;" : "background-color: #f4f6f7; border: 1px solid #d5dbdb;";
+                
+                html += `<span class="hist-char" style="cursor:pointer; font-weight:bold; ${bgStyle}" onclick="clickHistoryChar(${i})">「${h.char}」</span>`;
+                
+                if ((i + 1) % 5 === 0) {
+                    if ((i + 1) % 10 === 0) {
+                        html += ` <b style="color:#e67e22; font-size:13px; margin-left:6px;">${i + 1}</b>`;
+                    }
+                    html += "<br>";
+                }
+            }
+            el.innerHTML = html;
+            renderTeamTogglePanel();
+        }
+
+        // 👑 文字履歴タップ時の処理
+        function clickHistoryChar(idx) {
+            let isTeamMode = document.getElementById("gameTypeOption").value === "team";
+            if (!isTeamMode) return; // チーム戦以外ではトグルパネルを開かない
+            
+            selectedHistoryIndex = idx;
+            renderTeamTogglePanel();
+        }
+
+        // 👑 獲得チーム切り替えパネルの生成
+        function renderTeamTogglePanel() {
+            let container = document.getElementById("teamTogglePanelContainer");
+            if (!container) return;
+            
+            let isTeamMode = document.getElementById("gameTypeOption").value === "team";
+            if (!isTeamMode || selectedHistoryIndex === null || !gameHistory[selectedHistoryIndex]) {
+                container.classList.add("hidden");
+                return;
+            }
+            
+            container.classList.remove("hidden");
+            let h = gameHistory[selectedHistoryIndex];
+            
+            let pTitle = document.createElement("p");
+            pTitle.style.margin = "0 0 8px 0";
+            pTitle.style.fontSize = "13px";
+            pTitle.style.fontWeight = "bold";
+            pTitle.style.color = "#006666";
+            pTitle.textContent = `🎯 文字 「${h.char}」 (${selectedHistoryIndex + 1}番目) を出せたチームにチェック：`;
+            
+            let btnWrapper = document.createElement("div");
+            btnWrapper.style.display = "flex";
+            btnWrapper.style.flexWrap = "wrap";
+            btnWrapper.style.gap = "8px";
+            
+            gameParticipants.forEach(p => {
+                let btn = document.createElement("button");
+                btn.className = "action-btn";
+                btn.style.width = "auto";
+                btn.style.padding = "6px 12px";
+                btn.style.fontSize = "13px";
+                
+                let isWon = h.wonTeams && h.wonTeams.includes(p.name);
+                if (isWon) {
+                    btn.textContent = `✅ ${p.name}`;
+                    btn.style.backgroundColor = "#00a497";
+                } else {
+                    btn.textContent = `⬜ ${p.name}`;
+                    btn.style.backgroundColor = "#7f8c8d";
+                }
+                
+                btn.onclick = () => {
+                    if (!h.wonTeams) h.wonTeams = [];
+                    if (isWon) {
+                        h.wonTeams = h.wonTeams.filter(t => t !== p.name);
+                    } else {
+                        h.wonTeams.push(p.name);
+                    }
+                    // 得点自動計算発火
+                    recalculateTeamScores();
+                    renderTeamTogglePanel();
+                    updateGameHistoryDisplay();
+                };
+                btnWrapper.appendChild(btn);
+            });
+            
+            let closeBtn = document.createElement("button");
+            closeBtn.className = "action-btn";
+            closeBtn.style.width = "auto";
+            closeBtn.style.padding = "6px 12px";
+            closeBtn.style.fontSize = "13px";
+            closeBtn.style.backgroundColor = "#34495e";
+            closeBtn.textContent = "閉じる";
+            closeBtn.onclick = () => {
+                selectedHistoryIndex = null;
+                renderTeamTogglePanel();
+            };
+            btnWrapper.appendChild(closeBtn);
+            
+            container.innerHTML = "";
+            container.appendChild(pTitle);
+            container.appendChild(btnWrapper);
+        }
+
+        // 👑 チーム戦の得点自動計算ロジック
+        function recalculateTeamScores() {
+            gameParticipants.forEach(p => { p.score = 0; });
+            
+            gameHistory.forEach(h => {
+                if (h.wonTeams) {
+                    h.wonTeams.forEach(tName => {
+                        let team = gameParticipants.find(p => p.name === tName);
+                        if (team) team.score++;
+                    });
+                }
+            });
+            renderParticipants();
+        }
+
+        // 👑 参加枠追加（チーム戦はメンバー名も格納）
+        function addParticipant() {
+            let inputName = document.getElementById("gamePlayerInput");
+            let inputMembers = document.getElementById("gamePlayerMembersInput");
+            
+            let name = inputName.value.trim();
+            let members = inputMembers.value.trim();
+            let isTeamMode = document.getElementById("gameTypeOption").value === "team";
+            
+            if (name === "") return;
+            
+            gameParticipants.push({
+                name: name,
+                members: isTeamMode ? members : "",
+                score: 0
+            });
+            
+            inputName.value = "";
+            inputMembers.value = "";
+            renderParticipants();
+            
+            if (isTeamMode) {
+                recalculateTeamScores();
+            }
+        }
+
+        // 👑 プレイヤー/チームリストの描画（得点入力のテキスト窓対応、メンバー表示）
+        function renderParticipants() {
+            let ul = document.getElementById("gamePlayerList");
+            ul.innerHTML = "";
+            let isTeamMode = document.getElementById("gameTypeOption").value === "team";
+            
+            gameParticipants.forEach((p, idx) => {
+                let li = document.createElement("li");
+                li.className = "score-row";
+                li.style.flexDirection = "row";
+                li.style.backgroundColor = "#fafafa";
+                li.style.border = "1px solid #eee";
+                li.style.borderRadius = "6px";
+                li.style.marginBottom = "6px";
+                
+                let nameContainer = document.createElement("div");
+                nameContainer.style.display = "flex";
+                nameContainer.style.flexDirection = "column";
+                
+                let nameSpan = document.createElement("span");
+                nameSpan.style.fontWeight = "bold";
+                nameSpan.textContent = p.name;
+                nameContainer.appendChild(nameSpan);
+                
+                // チーム戦メンバーの確認表示
+                if (isTeamMode && p.members) {
+                    let membersSpan = document.createElement("span");
+                    membersSpan.style.fontSize = "11px";
+                    membersSpan.style.color = "#7f8c8d";
+                    membersSpan.style.marginTop = "2px";
+                    membersSpan.textContent = `👥 メンバー: ${p.members}`;
+                    nameContainer.appendChild(membersSpan);
+                }
+                
+                let rightDiv = document.createElement("div");
+                rightDiv.style.display = "flex";
+                rightDiv.style.alignItems = "center";
+                rightDiv.style.gap = "8px";
+                
+                let minusBtn = document.createElement("button");
+                minusBtn.className = "score-btn minus";
+                minusBtn.textContent = "ー";
+                // 🛠 得点が0以下になっても「ー」ボタンで減らせるようにガード条件（if(p.score > 0)）を除去
+                minusBtn.onclick = () => { p.score--; renderParticipants(); };
+                
+                // 得点テキスト窓対応
+                let scoreInput = document.createElement("input");
+                scoreInput.type = "number";
+                scoreInput.style.width = "55px";
+                scoreInput.style.padding = "4px";
+                scoreInput.style.fontSize = "15px";
+                scoreInput.style.fontWeight = "bold";
+                scoreInput.style.textAlign = "center";
+                scoreInput.style.border = "1px solid #b2d8d8";
+                scoreInput.style.borderRadius = "4px";
+                scoreInput.value = p.score;
+                scoreInput.oninput = (e) => {
+                    let val = parseInt(e.target.value);
+                    p.score = isNaN(val) ? 0 : val;
+                };
+                
+                let plusBtn = document.createElement("button");
+                plusBtn.className = "score-btn";
+                plusBtn.textContent = "＋";
+                plusBtn.onclick = () => { p.score++; renderParticipants(); };
+                
+                let delBtn = document.createElement("button");
+                delBtn.className = "delete-btn";
+                delBtn.style.padding = "4px 8px";
+                delBtn.style.fontSize = "11px";
+                delBtn.textContent = "削除";
+                delBtn.onclick = () => { 
+                    gameParticipants.splice(idx, 1); 
+                    if (isTeamMode) recalculateTeamScores();
+                    renderParticipants(); 
+                };
+                
+                rightDiv.appendChild(minusBtn);
+                rightDiv.appendChild(scoreInput);
+                rightDiv.appendChild(plusBtn);
+                rightDiv.appendChild(delBtn);
+                
+                li.appendChild(nameContainer);
+                li.appendChild(rightDiv);
+                ul.appendChild(li);
+            });
+        }
+
+        // 👑 ターン数手動変更
+        function changeTurn(val) {
+            gameTurn += val;
+            if (gameTurn < 0) gameTurn = 0;
+            document.getElementById("gameTurnSpan").textContent = gameTurn;
+        }
+
+        // 👑 単発お題のLINEコピー
+        function copyLastOdai() {
+            if (!lastOdaiText) { alert("まだお題を引いていません！"); return; }
+            navigator.clipboard.writeText(lastOdaiText).then(() => {
+                alert("お題をコピーしました！");
+            }).catch(() => { alert("コピーに失敗しました。"); });
+        }
+
+        // 👑 LINE配信用履歴テキスト整形
+        function generateHistoryTextForLine() {
+            let text = "";
+            for (let i = 0; i < gameHistory.length; i++) {
+                text += `「${gameHistory[i].char}」`;
+                if ((i + 1) % 5 === 0) {
+                    if ((i + 1) % 10 === 0) {
+                        text += ` ${i + 1}`;
+                    }
+                    text += "\n";
+                }
+            }
+            if (gameHistory.length % 5 !== 0) text += "\n";
+            return text.trim();
+        }
+
+        // 👑 企画全体のリザルトLINE用コピー
+        function copyGameResult() {
+            let modeSelector = document.getElementById("gameModeOption");
+            let modeText = modeSelector.options[modeSelector.selectedIndex].text;
+            let modeType = document.getElementById("gameTypeOption").value === "team" ? "チーム戦" : "個人戦";
+            let subType = document.getElementById("gameSubOption").value === "yes" ? "副駅名あり" : "副駅名なし";
+            let customRules = document.getElementById("gameCustomRulesInput").value.trim();
+            
+            let historyText = generateHistoryTextForLine() || "なし";
+            
+            let scoreText = gameParticipants.map(p => {
+                let base = `・${p.name}: ${p.score}点`;
+                if (document.getElementById("gameTypeOption").value === "team" && p.members) {
+                    base += ` (メンバー: ${p.members})`;
+                }
+                return base;
+            }).join("\n") || "データなし";
+            
+            let text = `【駅名企画 リザルト】\n`;
+            text += `現在のターン：${gameTurn}ターン目\n`;
+            text += `ルール：${modeText} / ${modeType} / ${subType}\n`;
+            if (customRules) {
+                text += `追加ルール説明：${customRules}\n`;
+            }
+            text += `\n◆ これまでに出た文字 ◆\n${historyText}\n\n`;
+            text += `◆ スコア一覧 ◆\n${scoreText}`;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert("リザルトをコピーしました！LINEにそのまま送信できます。");
+            }).catch(() => { alert("コピーに失敗しました。"); });
+        }
+
+        // 👑 企画リセット
+        function resetGame() {
+            if (!confirm("現在のターン数、参加者、得点、履歴をすべてリセットしますか？")) return;
+            if (!confirm("本当に、本当にリセットしますか？（データは元に戻せません）")) return;
+            gameHistory = [];
+            gameParticipants = [];
+            lastOdaiText = "";
+            gameTurn = 0;
+            selectedHistoryIndex = null;
+            document.getElementById("gameTurnSpan").textContent = gameTurn;
+            document.getElementById("gameCustomRulesInput").value = "";
+            document.getElementById("gameOdaisDisplay").innerHTML = `<span style="color:#bdc3c7;">ボタンを押してお題を引いてね！</span>`;
+            updateGameHistoryDisplay();
+            renderParticipants();
         }
     </script>
 </body>
