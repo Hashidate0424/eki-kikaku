@@ -630,7 +630,7 @@
                 <button onclick="registerCustomStation()" class="action-btn" style="background-color: #f39c12; margin-top: 5px;">この駅をデータベースに登録</button>
             </div>
 
-            <h2>🛠 設定 of 変更</h2>
+            <h2>🛠 アカウント設定</h2>
             <div class="search-container">
                 <p style="margin:0; font-weight:bold; color:#16a085; font-size:14px;">ユーザー名の変更</p>
                 <input type="text" id="newUsernameInput" placeholder="新しいユーザー名">
@@ -1226,7 +1226,7 @@
 
                 let memoBtn = document.createElement("button");
                 memoBtn.className = "add-memo-btn";
-                memoBtn.textContent = "📝 一時リスト";
+                memoBtn.textContent = "📝 リスト";
                 memoBtn.onclick = () => {
                     if (!stationMemo.includes(fullName)) {
                         stationMemo.push(fullName);
