@@ -450,6 +450,7 @@
                     <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('passwordInput', this)">👁️</button>
                 </div>
                 <button class="action-btn" id="authSubmitBtn" onclick="handleLogin()" style="margin-top: 8px;">ログイン</button>
+                <p id="forgotPasswordLink" style="margin: 8px 0 0 0; font-size: 13px; text-align: right; color: #008080; cursor: pointer; text-decoration: underline;" onclick="handlePasswordReset()">パスワードをお忘れですか？</p>
             </div>
         </div>
 
@@ -823,6 +824,7 @@
             let submitBtn = document.getElementById("authSubmitBtn");
             let tabLogin = document.getElementById("authTabLogin");
             let tabSignup = document.getElementById("authTabSignup");
+            let forgotLink = document.getElementById("forgotPasswordLink");
 
             if (mode === "signup") {
                 nickGroup.classList.remove("hidden");
@@ -833,6 +835,7 @@
                 tabSignup.style.color = "#fff";
                 tabLogin.style.backgroundColor = "#b2d8d8";
                 tabLogin.style.color = "#2c3e50";
+                forgotLink.classList.add("hidden");
             } else {
                 nickGroup.classList.add("hidden");
                 hint.textContent = "メールアドレスとパスワードでログインしてね！";
@@ -842,6 +845,7 @@
                 tabLogin.style.color = "#fff";
                 tabSignup.style.backgroundColor = "#b2d8d8";
                 tabSignup.style.color = "#2c3e50";
+                forgotLink.classList.remove("hidden");
             }
         }
 
@@ -1064,6 +1068,20 @@
                     document.getElementById("passwordInput").value = "";
                     resetPasswordInputs();
                     alert("新しくアカウントを作成しました！");
+                })
+                .catch((err) => { alert(describeAuthError(err)); });
+        }
+
+        // 🛡 パスワード再設定メールを送信する（ログイン画面のメール欄に入力されたアドレス宛）
+        function handlePasswordReset() {
+            let email = document.getElementById("emailInput").value.trim();
+            if (email === "") { alert("まず、メールアドレス欄にログイン用のメールアドレスを入力してください！"); return; }
+
+            if (!confirm(`${email} 宛にパスワード再設定用のメールを送信します。よろしいですか？`)) return;
+
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    alert("パスワード再設定メールを送信しました！メール内のリンクから新しいパスワードを設定してください。（届かない場合は迷惑メールフォルダもご確認ください）");
                 })
                 .catch((err) => { alert(describeAuthError(err)); });
         }
