@@ -12,6 +12,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
         body {
@@ -159,27 +160,88 @@
         .action-btn:hover { background-color: #008080; }
 
         ul { list-style-type: none; padding: 0; margin: 0; }
-        li {
+        
+        /* ✨ 改善版：適度な余白と駅名大サイズを両立したコンパクトデザイン */
+        li.station-card {
             background-color: white;
-            padding: 12px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+            padding: 6px 10px; /* 上下左右の余白を少し広げて窮屈さを解消 */
+            margin-bottom: 6px; /* 駅カード同士の間隔を少し開けてすっきりと */
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border-left: 4px solid #00a497; /* 線の太さを少しアップ */
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .station-info {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 2px; /* 文字同士がくっつきすぎないよう微小な行間を設定 */
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .station-kana {
+            font-size: 10px;
+            color: #7f8c8d;
+            letter-spacing: 0.3px;
+            margin: 0;
+            line-height: 1.1;
+        }
+        .station-name-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .station-name {
+            font-size: 18px; /* 駅名をしっかり大きく（前：15px） */
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .station-sub {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+        .station-meta {
+            font-size: 12px;
+            color: #7f8c8d;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .station-owners {
+            font-size: 11px;
+            color: #e67e22;
+            font-weight: bold;
+            line-height: 1.1;
+            margin-top: 1px;
         }
 
         .btn-group {
             display: flex;
-            gap: 8px;
+            gap: 4px;
             justify-content: flex-end;
-            margin-top: 5px;
+            align-items: center;
+            margin-top: 0;
+            flex-shrink: 0;
         }
 
-        .delete-btn { background-color: #e74c3c; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 6px; cursor: pointer; }
-        .add-memo-btn { background-color: #3498db; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 6px; cursor: pointer; }
-        .own-btn { background-color: #f1c40f; color: #2c3e50; border: none; padding: 6px 12px; font-size: 13px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .delete-btn, .add-memo-btn, .own-btn {
+            padding: 3px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            height: 24px; /* 押しやすさとバランスのために少し大きく（前：24px） */
+            line-height: 20px;
+            box-sizing: border-box;
+        }
+
+        .delete-btn { background-color: #e74c3c; color: white; border: none; cursor: pointer; }
+        .add-memo-btn { background-color: #3498db; color: white; border: none; cursor: pointer; }
+        .own-btn { background-color: #f1c40f; color: #2c3e50; border: none; font-weight: bold; cursor: pointer; }
 
         .option-grid {
             display: grid;
@@ -371,13 +433,23 @@
         <div id="loginGatePage" class="page-content active">
             <h2>🔑 ログイン / 新規登録</h2>
             <div class="search-container">
-                <p style="margin: 0 0 5px 0; font-size: 14px; color: #666;">名前とパスワードを決めて入力してね！</p>
-                <input type="text" id="usernameInput" placeholder="ユーザー名">
-                <div class="password-container">
-                    <input type="password" id="passwordInput" placeholder="パスワード">
+                <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+                    <button type="button" id="authTabLogin" class="action-btn" style="background-color:#00a497;" onclick="switchAuthTab('login')">ログイン</button>
+                    <button type="button" id="authTabSignup" class="action-btn" style="background-color:#b2d8d8; color:#2c3e50;" onclick="switchAuthTab('signup')">新規登録</button>
+                </div>
+
+                <p id="authHintText" style="margin: 0 0 5px 0; font-size: 14px; color: #666;">メールアドレスとパスワードでログインしてね！</p>
+
+                <div id="authNicknameGroup" class="hidden">
+                    <input type="text" id="nicknameInput" placeholder="ニックネーム（他の人に表示される名前）">
+                </div>
+
+                <input type="text" id="emailInput" placeholder="メールアドレス" style="margin-top: 8px;">
+                <div class="password-container" style="margin-top: 8px;">
+                    <input type="password" id="passwordInput" placeholder="パスワード（6文字以上）">
                     <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('passwordInput', this)">👁️</button>
                 </div>
-                <button class="action-btn" onclick="handleAuth()">ログイン / 新規登録</button>
+                <button class="action-btn" id="authSubmitBtn" onclick="handleLogin()" style="margin-top: 8px;">ログイン</button>
             </div>
         </div>
 
@@ -437,7 +509,7 @@
 
             <h3>検索結果 <span id="searchResultTitleCount"></span></h3>
             <ul id="searchResults">
-                <li style="color:#7f8c8d; text-align:center;">検索結果はここに表示されます</li>
+                <li style="color:#7f8c8d; text-align:center; background:none; box-shadow:none;">検索結果はここに表示されます</li>
             </ul>
         </div>
 
@@ -452,7 +524,7 @@
             </div>
 
             <details id="copySectionDetails" style="margin-bottom: 12px; background: #eaf2f1; padding: 10px; border-radius: 8px; border: 1px solid #b2d8d8;">
-                <summary style="cursor: pointer; font-weight: bold; color: #34495e; font-size: 14px;">📋 マイ駅データのコピー・バックアップ（五十音順）</summary>
+                <summary style="cursor: pointer; font-weight: bold; color: #34495e; font-size: 14px;">📋 マイ駅データのコピー・バックアップ（表示順通り）</summary>
                 <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
                     <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.4;">
                         ※データ数が非常に多い場合、スマホの限界で一括コピーだと途中で切れることがあります。その場合は以下の<b>「分割コピー」</b>を使うか、一番下のテキストボックスから直接コピーしてください。
@@ -474,7 +546,7 @@
                     <p style="margin: 0 0 8px 0; font-size: 13px; color: #555; line-height: 1.4;">
                         改行ごとに駅名を入力してね！<br>
                         例：新宿（東日本旅客鉄道）<br>
-                        ※駅名だけでも自動判別して全て登録されます！
+                        ※駅名だけでも自動判別してすべて登録されます！
                     </p>
                     <textarea id="bulkStationInput" rows="5" style="width: 100%; padding: 10px; border: 2px solid #b2d8d8; border-radius: 8px; font-size: 14px; box-sizing: border-box; resize: vertical;" placeholder="梅田（阪急電鉄）&#13;難波&#13;東京"></textarea>
                     <button class="action-btn" onclick="addBulkOwnStations()" style="background-color: #e67e22; margin-top: 5px;">まとめてマイ駅に登録</button>
@@ -486,10 +558,10 @@
             <details style="margin-bottom: 12px; background: #eef7f5; padding: 10px; border-radius: 8px; border: 1px solid #b2d8d8;">
                 <summary style="cursor: pointer; font-weight: bold; color: #008080; font-size: 14px;">📊 マイ駅の統計データ（内訳をみる）</summary>
                 <div class="stats-section">
-                    <div class="stats-title">五十音（始まりの文字</div>
+                    <div class="stats-title">始まりの文字</div>
                     <div id="statsKana" class="stats-grid">データがありません</div>
 
-                    <div class="stats-title">五十音（終わりの文字）</div>
+                    <div class="stats-title">終わりの文字</div>
                     <div id="statsKanaEnd" class="stats-grid">データがありません</div>
 
                     <div class="stats-title">都道府県別</div>
@@ -500,8 +572,13 @@
                 </div>
             </details>
 
-            <div class="search-container" style="padding: 10px; margin-bottom: 10px; gap: 8px;">
-                <input type="text" id="myOwnSearchInput" placeholder="マイ駅から検索..." oninput="updateOwnList()" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8;">
+            <div class="search-container" style="padding: 10px; margin-bottom: 10px; gap: 8px; flex-direction: row; align-items: center;">
+                <input type="text" id="myOwnSearchInput" placeholder="マイ駅から検索..." oninput="updateOwnList()" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8; flex: 1;">
+                <select id="myOwnSortSelect" onchange="updateOwnList()" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8; border-radius: 8px; background: white; width: auto; max-width: 130px; cursor: pointer;">
+                    <option value="kana">五十音順</option>
+                    <option value="pref">都道府県順</option>
+                    <option value="company">鉄道会社順</option>
+                </select>
             </div>
 
             <ul id="myOwnStationsList"></ul>
@@ -569,7 +646,7 @@
                         </div>
                         <div id="gameTeamMembersGroup" class="hidden" style="flex: 1.5;">
                             <label style="font-size: 11px; font-weight: bold; color: #555;">チームメンバー（カンマ区切り）</label>
-                            <input type="text" id="gamePlayerMembersInput" placeholder="Aくん, Bさん, Cくん" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8; border-radius: 6px;">
+                            <input type="text" id="gamePlayerMembersInput" placeholder="A, B, C" style="padding: 8px; font-size: 14px; border: 1px solid #b2d8d8; border-radius: 6px;">
                         </div>
                     </div>
                     <button class="action-btn" onclick="addParticipant()" style="padding: 8px; font-size: 14px; background-color: #34495e;">➕ 参加枠を追加</button>
@@ -593,7 +670,7 @@
                     <summary style="cursor: pointer; font-weight: bold; color: #d35400; font-size: 14px;">📋 主催者データの移行（引き継ぎテキスト）</summary>
                     <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
                         <p style="margin: 0; font-size: 12px; color: #666; line-height: 1.4;">
-                            主催者を交代する場合、下のボタンで現在の状況をスッキリしたテキストデータにしてLINEなどで渡すことができます。（自動で1行に縮小されます）
+                            主催者を交代する場合、下のボタンで現在の状況をテキストデータにしてLINEなどで渡すことができます。
                         </p>
                         <button class="action-btn" onclick="exportGameToSpell()" style="background-color: #d35400; font-size: 13px; padding: 10px;">✨ 現在の企画データをコピー</button>
                         
@@ -613,6 +690,7 @@
             <h2>👤 アカウント情報</h2>
             <div class="search-container" style="background: #e2f0ed;">
                 <p style="font-size: 16px; margin: 0;">ログイン中: <strong id="welcomeMessage" style="color: #008080;">ゲスト さん</strong></p>
+                <p style="font-size: 12px; margin: 4px 0 0 0; color: #7f8c8d;">メールアドレス: <span id="accountEmailText"></span></p>
                 <button onclick="logout()" class="action-btn" style="background-color: #7f8c8d; padding: 8px; font-size: 14px; margin-top: 5px;">ログアウトする</button>
             </div>
 
@@ -630,11 +708,11 @@
                 <button onclick="registerCustomStation()" class="action-btn" style="background-color: #f39c12; margin-top: 5px;">この駅をデータベースに登録</button>
             </div>
 
-            <h2>🛠 アカウント設定</h2>
+            <h2>🛠 アカウントs</h2>
             <div class="search-container">
-                <p style="margin:0; font-weight:bold; color:#16a085; font-size:14px;">ユーザー名の変更</p>
-                <input type="text" id="newUsernameInput" placeholder="新しいユーザー名">
-                <button onclick="changeUsername()" class="action-btn" style="background-color: #16a085; padding: 10px;">名前を変更する</button>
+                <p style="margin:0; font-weight:bold; color:#16a085; font-size:14px;">ニックネームの変更</p>
+                <input type="text" id="newUsernameInput" placeholder="新しいニックネーム">
+                <button onclick="changeUsername()" class="action-btn" style="background-color: #16a085; padding: 10px;">ニックネームを変更する</button>
             </div>
 
             <div class="search-container">
@@ -644,7 +722,7 @@
                     <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('oldPasswordInput', this)">👁️</button>
                 </div>
                 <div class="password-container" style="margin-top: 5px;">
-                    <input type="password" id="newPasswordInput" placeholder="新しいパスワード">
+                    <input type="password" id="newPasswordInput" placeholder="新しいパスワード（6文字以上）">
                     <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('newPasswordInput', this)">👁️</button>
                 </div>
                 <button onclick="changePassword()" class="action-btn" style="margin-top: 5px;">パスワードを変更する</button>
@@ -694,14 +772,17 @@
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
 
         let stationMemo = [];
-        let currentUser = null; 
-        let viewedUser = null; 
+        let currentUser = null;  // 👑 ログイン中ユーザーのUID（Firebase Authが発行するID。データベースの保存キーとして使う）
+        let currentUserEmail = "";
+        let viewedUser = null;   // 👑 マイ駅ページで表示中のユーザーのUID
         let isEditMode = false; 
         let combinedStationsList = []; 
-        let allUserData = {};
+        let allUserData = {};   // 👑 { uid: { nickname, myOwnStations, customStations } }
         let globallySortedOwnNames = []; 
+        let authMode = "login"; // 👑 ログインフォームの表示モード（"login" or "signup"）
 
         // 👑 企画用グローバル変数
         let gameHistory = []; 
@@ -719,31 +800,87 @@
             return index === -1 ? 999 : index;
         }
 
+        // 🛡 XSS対策：innerHTMLに差し込む文字列から危険な記号をエスケープする
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return "";
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        // 👑 UIDからニックネームを引く（未取得時はUIDをそのまま表示）
+        function nickOf(uid) {
+            return (allUserData[uid] && allUserData[uid].nickname) ? allUserData[uid].nickname : uid;
+        }
+
+        function switchAuthTab(mode) {
+            authMode = mode;
+            let nickGroup = document.getElementById("authNicknameGroup");
+            let hint = document.getElementById("authHintText");
+            let submitBtn = document.getElementById("authSubmitBtn");
+            let tabLogin = document.getElementById("authTabLogin");
+            let tabSignup = document.getElementById("authTabSignup");
+
+            if (mode === "signup") {
+                nickGroup.classList.remove("hidden");
+                hint.textContent = "ニックネーム・メールアドレス・パスワードを入力して新規登録してね！";
+                submitBtn.textContent = "新規登録する";
+                submitBtn.onclick = handleSignup;
+                tabSignup.style.backgroundColor = "#00a497";
+                tabSignup.style.color = "#fff";
+                tabLogin.style.backgroundColor = "#b2d8d8";
+                tabLogin.style.color = "#2c3e50";
+            } else {
+                nickGroup.classList.add("hidden");
+                hint.textContent = "メールアドレスとパスワードでログインしてね！";
+                submitBtn.textContent = "ログイン";
+                submitBtn.onclick = handleLogin;
+                tabLogin.style.backgroundColor = "#00a497";
+                tabLogin.style.color = "#fff";
+                tabSignup.style.backgroundColor = "#b2d8d8";
+                tabSignup.style.color = "#2c3e50";
+            }
+        }
+
         window.onload = function() {
-            database.ref("users").on("value", (snapshot) => {
-                allUserData = snapshot.val() || {};
-                
-                if (!currentUser) {
-                    let savedUser = localStorage.getItem("persistentLoginUser");
-                    if (savedUser && allUserData[savedUser]) {
-                        currentUser = savedUser;
-                        showLoggedInUI();
-                        switchPage('search');
-                    }
+            // 👑 Firebase Authのログイン状態を監視（永続化はFirebaseが自動で行う）
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    currentUser = user.uid;
+                    currentUserEmail = user.email || "";
+                    viewedUser = user.uid;
+
+                    let isFirstSnapshot = true;
+                    database.ref("users").off();
+                    database.ref("users").on("value", (snapshot) => {
+                        allUserData = snapshot.val() || {};
+                        if (isFirstSnapshot) {
+                            isFirstSnapshot = false;
+                            showLoggedInUI();
+                            switchPage('search');
+                        } else {
+                            refreshCombinedStations();
+                            updateUserSelect();
+                            updateSearchMemberFilters();
+                            updateOwnList();
+                        }
+                    });
                 } else {
-                    refreshCombinedStations();
-                    updateUserSelect(); 
-                    updateSearchMemberFilters(); 
-                    updateOwnList();
+                    currentUser = null;
+                    currentUserEmail = "";
+                    viewedUser = null;
+                    database.ref("users").off();
+                    document.getElementById("bottomNavBar").classList.add("hidden");
+                    document.getElementById("pageSearch").classList.remove("active");
+                    document.getElementById("pageMyList").classList.remove("active");
+                    document.getElementById("pageGame").classList.remove("active");
+                    document.getElementById("pageSettings").classList.remove("active");
+                    document.getElementById("loginGatePage").classList.add("active");
                 }
             });
-
-            let sessionUser = sessionStorage.getItem("loginUser");
-            if (sessionUser && !currentUser) {
-                currentUser = sessionUser;
-                showLoggedInUI();
-                switchPage('search');
-            }
 
             // 👑 起動時にローカルストレージから企画データを復元
             loadGameStateFromStorage();
@@ -777,6 +914,7 @@
                     btn.classList.remove("hidden");
                 }
                 document.getElementById("myOwnSearchInput").value = ""; 
+                document.getElementById("myOwnSortSelect").value = "kana";
                 refreshCombinedStations();
                 updateUserSelect();
                 updateOwnList();
@@ -799,11 +937,11 @@
             let currentSelection = select.value || viewedUser || currentUser;
             select.innerHTML = "";
             
-            Object.keys(allUserData).sort().forEach(name => {
+            Object.keys(allUserData).sort((a, b) => nickOf(a).localeCompare(nickOf(b), 'ja')).forEach(uid => {
                 let option = document.createElement("option");
-                option.value = name;
-                option.textContent = name === currentUser ? `${name} (自分)` : name;
-                if (name === currentSelection) option.selected = true;
+                option.value = uid;
+                option.textContent = uid === currentUser ? `${nickOf(uid)} (自分)` : nickOf(uid);
+                if (uid === currentSelection) option.selected = true;
                 select.appendChild(option);
             });
         }
@@ -819,7 +957,7 @@
 
             container.innerHTML = "";
 
-            Object.keys(allUserData).sort().forEach(name => {
+            Object.keys(allUserData).sort((a, b) => nickOf(a).localeCompare(nickOf(b), 'ja')).forEach(uid => {
                 let label = document.createElement("label");
                 label.style.cursor = "pointer";
                 label.style.display = "inline-flex";
@@ -828,12 +966,12 @@
 
                 let cb = document.createElement("input");
                 cb.type = "checkbox";
-                cb.value = name;
+                cb.value = uid;
                 cb.className = "search-member-cb";
-                if (previouslyChecked.includes(name)) cb.checked = true;
+                if (previouslyChecked.includes(uid)) cb.checked = true;
 
                 label.appendChild(cb);
-                label.appendChild(document.createTextNode(name === currentUser ? `${name} (自分)` : name));
+                label.appendChild(document.createTextNode(uid === currentUser ? `${nickOf(uid)} (自分)` : nickOf(uid)));
                 container.appendChild(label);
             });
         }
@@ -882,47 +1020,59 @@
             }
         }
 
-        function handleAuth() {
-            let name = document.getElementById("usernameInput").value.trim();
-            let pass = document.getElementById("passwordInput").value.trim();
-
-            if (name === "" || pass === "") { alert("ユーザー名とパスワードを入力してね！"); return; }
-
-            if (allUserData[name]) {
-                if (allUserData[name].password === pass) {
-                    currentUser = name;
-                    viewedUser = name;
-                    localStorage.setItem("persistentLoginUser", name);
-                    sessionStorage.setItem("loginUser", name);
-                    alert("ログインしました！");
-                    showLoggedInUI();
-                    switchPage('search');
-                } else {
-                    alert("パスワードが違います！");
-                }
-            } else {
-                let newUserData = { password: pass, myOwnStations: [], customStations: [] };
-                database.ref("users/" + name).set(newUserData)
-                .then(() => {
-                    currentUser = name;
-                    viewedUser = name;
-                    localStorage.setItem("persistentLoginUser", name);
-                    sessionStorage.setItem("loginUser", name);
-                    alert("新しくアカウントを作成してサーバーにログインしました！");
-                    showLoggedInUI();
-                    switchPage('search');
-                })
-                .catch((err) => { alert("通信エラーが発生しました"); console.error(err); });
+        // 🛡 Firebase Authのエラーコードを日本語の分かりやすいメッセージに変換する
+        function describeAuthError(err) {
+            switch (err.code) {
+                case "auth/invalid-email": return "メールアドレスの形式が正しくありません。";
+                case "auth/user-not-found": return "そのメールアドレスのアカウントは見つかりませんでした。";
+                case "auth/wrong-password": case "auth/invalid-credential": return "メールアドレスまたはパスワードが違います。";
+                case "auth/email-already-in-use": return "そのメールアドレスはすでに登録されています。ログインタブからログインしてください。";
+                case "auth/weak-password": return "パスワードは6文字以上にしてください。";
+                case "auth/too-many-requests": return "試行回数が多すぎます。しばらく待ってから試してください。";
+                default: return "エラーが発生しました：" + err.message;
             }
-            document.getElementById("usernameInput").value = "";
-            document.getElementById("passwordInput").value = "";
-            resetPasswordInputs(); 
+        }
+
+        function handleLogin() {
+            let email = document.getElementById("emailInput").value.trim();
+            let pass = document.getElementById("passwordInput").value.trim();
+            if (email === "" || pass === "") { alert("メールアドレスとパスワードを入力してね！"); return; }
+
+            auth.signInWithEmailAndPassword(email, pass)
+                .then(() => {
+                    document.getElementById("emailInput").value = "";
+                    document.getElementById("passwordInput").value = "";
+                    resetPasswordInputs();
+                })
+                .catch((err) => { alert(describeAuthError(err)); });
+        }
+
+        function handleSignup() {
+            let nickname = document.getElementById("nicknameInput").value.trim();
+            let email = document.getElementById("emailInput").value.trim();
+            let pass = document.getElementById("passwordInput").value.trim();
+            if (nickname === "" || email === "" || pass === "") { alert("ニックネーム・メールアドレス・パスワードをすべて入力してね！"); return; }
+
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then((cred) => {
+                    let newUserData = { nickname: nickname, myOwnStations: [], customStations: [] };
+                    return database.ref("users/" + cred.user.uid).set(newUserData);
+                })
+                .then(() => {
+                    document.getElementById("nicknameInput").value = "";
+                    document.getElementById("emailInput").value = "";
+                    document.getElementById("passwordInput").value = "";
+                    resetPasswordInputs();
+                    alert("新しくアカウントを作成しました！");
+                })
+                .catch((err) => { alert(describeAuthError(err)); });
         }
 
         function showLoggedInUI() {
             document.getElementById("loginGatePage").classList.remove("active");
             document.getElementById("bottomNavBar").classList.remove("hidden");
-            document.getElementById("welcomeMessage").textContent = currentUser + " さん";
+            document.getElementById("welcomeMessage").textContent = nickOf(currentUser) + " さん";
+            document.getElementById("accountEmailText").textContent = currentUserEmail;
             if (!viewedUser) viewedUser = currentUser;
             refreshCombinedStations(); 
             updateUserSelect();
@@ -938,91 +1088,54 @@
         }
 
         function registerCustomStation() {
-    let pref = document.getElementById("customPref").value.trim();
-    let company = document.getElementById("customCompany").value.trim();
-    let line = document.getElementById("customLine").value.trim();
-    let name = document.getElementById("customName").value.trim();
-    let kana = document.getElementById("customKana").value.trim();
-    let sub = document.getElementById("customSub").value.trim();
+            let pref = document.getElementById("customPref").value.trim();
+            let company = document.getElementById("customCompany").value.trim();
+            let line = document.getElementById("customLine").value.trim();
+            let name = document.getElementById("customName").value.trim();
+            let kana = document.getElementById("customKana").value.trim();
+            let sub = document.getElementById("customSub").value.trim();
 
-    if (name === "" || kana === "") {
-        alert("駅名とふりがなは必須項目です！");
-        return;
-    }
+            if (pref === "" || company === "" || line === "" || name === "" || kana === "") {
+                alert("「副駅名」以外をもれなく入力してね！");
+                return;
+            }
 
-    let customId = "c_" + Date.now();
-    let newStation = {
-        id: customId,
-        name: name,
-        kana: kana,
-        pref: pref,
-        company: company,
-        line: line,
-        sub: sub
-    };
+            let myCustoms = (allUserData[currentUser] && allUserData[currentUser].customStations) ? [...allUserData[currentUser].customStations] : [];
 
-    // 1. カスタム駅リストへ追加
-    if (!allUserData[currentUser].customStations) {
-        allUserData[currentUser].customStations = [];
-    }
-    allUserData[currentUser].customStations.push(newStation);
+            let exists = myCustoms.some(s => s.name === name && s.company === company) ||
+                         allStations.some(s => s.name === name && s.company === company);
+            if (exists) {
+                alert("その駅はすでに登録されています！");
+                return;
+            }
 
-    // 2. 【修正】アプリのルールに合わせた「駅名（鉄道会社）」の形式でマイ駅に自動追加
-    let fullName = company ? `${name}（${company}）` : name;
-    
-    if (!allUserData[currentUser].myOwnStations) {
-        allUserData[currentUser].myOwnStations = [];
-    }
-    if (!allUserData[currentUser].myOwnStations.includes(fullName)) {
-        allUserData[currentUser].myOwnStations.push(fullName);
-    }
-
-    // 3. データベースへの保存と画面の反映
-    let updates = {};
-    updates["users/" + currentUser + "/customStations"] = allUserData[currentUser].customStations;
-    updates["users/" + currentUser + "/myOwnStations"] = allUserData[currentUser].myOwnStations;
-
-    database.ref().update(updates)
-        .then(() => {
-            alert(`🎉 新しい駅「${fullName}」をサーバーに登録し、マイ駅にも自動追加しました！`);
-            document.getElementById("customPref").value = "";
-            document.getElementById("customCompany").value = "";
-            document.getElementById("customLine").value = "";
-            document.getElementById("customName").value = "";
-            document.getElementById("customKana").value = "";
-            document.getElementById("customSub").value = "";
-            refreshCombinedStations();
-            updateOwnList();
-        })
-        .catch((err) => {
-            alert("登録に失敗しました");
-            console.error(err);
-        });
-}
-
+            let newStation = { pref: pref, company: company, line: line, name: name, kana: kana, subName: sub };
+            myCustoms.push(newStation);
+            
+            database.ref("users/" + currentUser + "/customStations").set(myCustoms)
+            .then(() => {
+                document.getElementById("customPref").value = "";
+                document.getElementById("customCompany").value = "";
+                document.getElementById("customLine").value = "";
+                document.getElementById("customName").value = "";
+                document.getElementById("customKana").value = "";
+                document.getElementById("customSub").value = "";
+                alert("「" + name + "」を新しくデータベースに登録しました！");
+            });
+        }
 
         function logout() {
-            currentUser = null;
-            viewedUser = null;
-            localStorage.removeItem("persistentLoginUser"); 
-            sessionStorage.setItem("loginUser", name);
-            
-            document.getElementById("bottomNavBar").classList.add("hidden");
-            document.getElementById("pageSearch").classList.remove("active");
-            document.getElementById("pageMyList").classList.remove("active");
-            document.getElementById("pageGame").classList.remove("active");
-            document.getElementById("pageSettings").classList.remove("active");
-            document.getElementById("loginGatePage").classList.add("active");
-            
-            document.getElementById("newUsernameInput").value = "";
-            document.getElementById("oldPasswordInput").value = "";
-            document.getElementById("newPasswordInput").value = "";
-            document.getElementById("deletePasswordInput").value = "";
-            document.getElementById("searchResults").innerHTML = '<li style="color:#7f8c8d; text-align:center;">検索結果はここに表示されます</li>';
-            document.getElementById("searchResultTitleCount").textContent = "";
-            
-            resetPasswordInputs();
-            alert("ログアウトしました。");
+            auth.signOut().then(() => {
+                document.getElementById("newUsernameInput").value = "";
+                document.getElementById("oldPasswordInput").value = "";
+                document.getElementById("newPasswordInput").value = "";
+                document.getElementById("deletePasswordInput").value = "";
+                document.getElementById("searchResults").innerHTML = '<li style="color:#7f8c8d; text-align:center; background:none; box-shadow:none;">検索結果はここに表示されます</li>';
+                document.getElementById("searchResultTitleCount").textContent = "";
+
+                resetPasswordInputs();
+                alert("ログアウトしました。");
+            });
         }
 
         function resetPasswordInputs() {
@@ -1039,6 +1152,25 @@
                 return Object.keys(data).sort((a, b) => Number(a) - Number(b)).map(key => data[key]);
             }
             return data;
+        }
+
+        function safeSortOwnList(listData, sortType, companyCounts) {
+            if (sortType === "pref") {
+                listData.sort((a, b) => {
+                    let diff = getPrefIndex(a.pref) - getPrefIndex(b.pref);
+                    if (diff !== 0) return diff;
+                    return a.kana.localeCompare(b.kana, 'ja');
+                });
+            } else if (sortType === "company") {
+                listData.sort((a, b) => {
+                    let countA = companyCounts[a.company] || 0;
+                    let countB = companyCounts[b.company] || 0;
+                    if (countB !== countA) return countB - countA;
+                    return a.kana.localeCompare(b.kana, 'ja');
+                });
+            } else {
+                listData.sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
+            }
         }
 
         function saveOwnStationsArray(arr) {
@@ -1072,7 +1204,7 @@
             
             let text = globallySortedOwnNames.join("\n");
             navigator.clipboard.writeText(text).then(() => {
-                alert(`【一括コピー完了】\n${targetUser} さんのマイ駅データ 全 ${globallySortedOwnNames.length} 駅を「五十音順」でクリップボードにコピーしました！`);
+                alert(`【一括コピー完了】\n${nickOf(targetUser)} さんのマイ駅データ 全 ${globallySortedOwnNames.length} 駅を表示順でクリップボードにコピーしました！`);
             }).catch(() => { alert("コピーに失敗しました。下の『手動用エリア』をお使いください。"); });
         }
 
@@ -1206,54 +1338,73 @@
             document.getElementById("searchResultTitleCount").textContent = `(${results.length}件)`;
 
             if (results.length === 0) {
-                ul.innerHTML = '<li style="color:#7f8c8d; text-align:center;">条件に合う駅が見つかりませんでした</li>';
+                ul.innerHTML = '<li style="color:#7f8c8d; text-align:center; background:none; box-shadow:none;">条件に合う駅が見つかりませんでした</li>';
                 return;
             }
 
             results.slice(0, 200).forEach(item => {
                 let fullName = `${item.name}（${item.company}）`;
+                
+                // 💡 超コンパクトデザインの駅カード生成
                 let li = document.createElement("li");
+                li.className = "station-card";
 
-                let details = document.createElement("details");
-                let summary = document.createElement("summary");
-                summary.style.cursor = "pointer";
-                summary.style.fontWeight = "bold";
-                summary.textContent = `${fullName} 🔽`;
-                details.appendChild(summary);
+                let infoDiv = document.createElement("div");
+                infoDiv.className = "station-info";
 
-                let div = document.createElement("div");
-                div.style.fontSize = "14px";
-                div.style.color = "#555";
-                div.style.marginTop = "5px";
+                // 1行目: ふりがな
+                let pKana = document.createElement("span");
+                pKana.className = "station-kana";
+                pKana.textContent = item.kana || "（ふりがな不明）";
+                infoDiv.appendChild(pKana);
 
+                // 2・3行目: 駅名と副駅名（横並び）
+                let nameRow = document.createElement("div");
+                nameRow.className = "station-name-row";
+                
+                let sName = document.createElement("span");
+                sName.className = "station-name";
+                sName.textContent = item.name;
+                nameRow.appendChild(sName);
+
+                if (item.subName) {
+                    let sSub = document.createElement("span");
+                    sSub.className = "station-sub";
+                    sSub.textContent = `（${item.subName}）`;
+                    nameRow.appendChild(sSub);
+                }
+                infoDiv.appendChild(nameRow);
+
+                // 4行目: メタデータ（プレーンテキスト）
+                let pMeta = document.createElement("div");
+                pMeta.className = "station-meta";
+                pMeta.textContent = `${item.pref} ${item.company} ${item.line}`;
+                infoDiv.appendChild(pMeta);
+
+                // 所持メンバー表示エリア
                 let owners = [];
-                Object.keys(allUserData).sort().forEach(uName => {
-                    let ownStations = getOwnStationsArray(uName);
+                Object.keys(allUserData).sort((a, b) => nickOf(a).localeCompare(nickOf(b), 'ja')).forEach(uid => {
+                    let ownStations = getOwnStationsArray(uid);
                     if (ownStations.includes(fullName)) {
-                        owners.push(uName === currentUser ? `${uName}(自分)` : uName);
+                        owners.push(uid === currentUser ? `${nickOf(uid)}(自分)` : nickOf(uid));
                     }
                 });
 
-                let ownerHtml = owners.length > 0
-                    ? `<span style="background-color: #e8f8f5; color: #00a497; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: inline-block;">${owners.join(", ")}</span>`
-                    : `<span style="color: #999; font-style: italic;">誰も持っていません</span>`;
+                if (owners.length > 0) {
+                    let pOwners = document.createElement("div");
+                    pOwners.className = "station-owners";
+                    pOwners.textContent = `所持: ${owners.join(", ")}`;
+                    infoDiv.appendChild(pOwners);
+                }
+                li.appendChild(infoDiv);
 
-                div.innerHTML = `
-                    <div><strong>かな:</strong> ${item.kana}</div>
-                    <div><strong>都道府県:</strong> ${item.pref}</div>
-                    <div><strong>路線:</strong> ${item.line}</div>
-                    ${item.subName ? `<div><strong>副駅名:</strong> ${item.subName}</div>` : ''}
-                    <div style="margin-top: 6px; font-size: 13px;"><strong>👥 所持者:</strong> ${ownerHtml}</div>
-                `;
-                details.appendChild(div);
-                li.appendChild(details);
-
+                // 操作ボタンエリア
                 let btnGroup = document.createElement("div");
                 btnGroup.className = "btn-group";
 
                 let memoBtn = document.createElement("button");
                 memoBtn.className = "add-memo-btn";
-                memoBtn.textContent = "📝 リスト";
+                memoBtn.textContent = "リスト";
                 memoBtn.onclick = () => {
                     if (!stationMemo.includes(fullName)) {
                         stationMemo.push(fullName);
@@ -1266,12 +1417,12 @@
                 let ownBtn = document.createElement("button");
                 ownBtn.className = "own-btn";
                 if (ownNames.includes(fullName)) {
-                    ownBtn.textContent = "🌟 登録済";
+                    ownBtn.textContent = "登録済";
                     ownBtn.style.backgroundColor = "#e67e22";
                     ownBtn.style.color = "white";
                     ownBtn.disabled = true;
                 } else {
-                    ownBtn.textContent = "⭐ マイ駅";
+                    ownBtn.textContent = "マイ駅";
                     ownBtn.onclick = () => addOwnStation(fullName);
                 }
                 btnGroup.appendChild(ownBtn);
@@ -1285,6 +1436,9 @@
                 moreLi.style.color = "#7f8c8d";
                 moreLi.style.textAlign = "center";
                 moreLi.style.fontSize = "12px";
+                moreLi.style.background = "none";
+                moreLi.style.boxShadow = "none";
+                moreLi.style.border = "none";
                 moreLi.textContent = "※件数が多いため上位200件のみ表示しています。";
                 ul.appendChild(moreLi);
             }
@@ -1360,7 +1514,7 @@
                 document.getElementById(targetId).innerHTML = "<div>データがありません</div>";
                 return;
             }
-            let html = sortedKeys.map(key => `<div><strong>${prefix}${key}${suffix}:</strong> ${countsObj[key]}駅</div>`).join("");
+            let html = sortedKeys.map(key => `<div><strong>${escapeHtml(prefix)}${escapeHtml(key)}${escapeHtml(suffix)}:</strong> ${countsObj[key]}駅</div>`).join("");
             document.getElementById(targetId).innerHTML = html;
         };
 
@@ -1403,7 +1557,8 @@
 
             document.getElementById("ownCount").textContent = listData.length;
 
-            listData.sort((a, b) => a.kana.localeCompare(b.kana, 'ja'));
+            let sortType = document.getElementById("myOwnSortSelect").value;
+            safeSortOwnList(listData, sortType, companyCounts);
 
             globallySortedOwnNames = listData.map(item => item.fullName);
 
@@ -1456,33 +1611,50 @@
             ul.innerHTML = "";
 
             if (displayList.length === 0) {
-                ul.innerHTML = '<li style="color:#7f8c8d; text-align:center;">駅がありません</li>';
+                ul.innerHTML = '<li style="color:#7f8c8d; text-align:center; background:none; box-shadow:none; border:none;">駅がありません</li>';
                 return;
             }
 
             for (let i = 0; i < displayList.length; i++) {
                 let item = displayList[i];
-                let li = document.createElement("li");
                 
-                let details = document.createElement("details");
-                let summary = document.createElement("summary");
-                summary.style.cursor = "pointer"; 
-                summary.style.fontWeight = "bold";
-                summary.textContent = `${item.fullName} 🔽`;
-                details.appendChild(summary);
+                // 💡 マイ駅一覧も超コンパクトデザイン化
+                let li = document.createElement("li");
+                li.className = "station-card";
 
-                let div = document.createElement("div");
-                div.style.fontSize = "14px";
-                div.style.color = "#555";
-                div.style.marginTop = "5px";
-                div.innerHTML = `
-                    <div><strong>かな:</strong> ${item.kana}</div>
-                    <div><strong>都道府県:</strong> ${item.pref}</div>
-                    <div><strong>路線:</strong> ${item.line}</div>
-                    ${item.subName ? `<div><strong>副駅名:</strong> ${item.subName}</div>` : ''}
-                `;
-                details.appendChild(div);
-                li.appendChild(details);
+                let infoDiv = document.createElement("div");
+                infoDiv.className = "station-info";
+
+                // 1行目: ふりがな
+                let pKana = document.createElement("span");
+                pKana.className = "station-kana";
+                pKana.textContent = item.kana || "（ふりがな不明）";
+                infoDiv.appendChild(pKana);
+
+                // 2・3行目: 駅名と副駅名（横並び）
+                let nameRow = document.createElement("div");
+                nameRow.className = "station-name-row";
+                
+                let sName = document.createElement("span");
+                sName.className = "station-name";
+                sName.textContent = item.name;
+                nameRow.appendChild(sName);
+
+                if (item.subName) {
+                    let sSub = document.createElement("span");
+                    sSub.className = "station-sub";
+                    sSub.textContent = `（${item.subName}）`;
+                    nameRow.appendChild(sSub);
+                }
+                infoDiv.appendChild(nameRow);
+
+                // 4行目: メタデータ（プレーンテキスト）
+                let pMeta = document.createElement("div");
+                pMeta.className = "station-meta";
+                pMeta.textContent = `${item.pref} ${item.company} ${item.line}`;
+                infoDiv.appendChild(pMeta);
+
+                li.appendChild(infoDiv);
 
                 if (isEditMode && targetUser === currentUser) {
                     let btnGroup = document.createElement("div");
@@ -1500,53 +1672,55 @@
         }
 
         function changeUsername() {
-            let newName = document.getElementById("newUsernameInput").value.trim();
-            if (newName === "") { alert("新しいユーザー名を入力してね！"); return; }
-            if (newName === currentUser) { alert("今と同じ名前ですよ！"); return; }
-            if (allUserData[newName]) { alert("そのユーザー名はすでに使われています！"); return; }
+            let newNickname = document.getElementById("newUsernameInput").value.trim();
+            if (newNickname === "") { alert("新しいニックネームを入力してください！"); return; }
+            if (allUserData[currentUser] && newNickname === allUserData[currentUser].nickname) { alert("今と同じニックネームです！"); return; }
 
-            let targetData = allUserData[currentUser];
-            database.ref("users/" + newName).set(targetData)
+            database.ref("users/" + currentUser + "/nickname").set(newNickname)
             .then(() => {
-                database.ref("users/" + currentUser).remove();
-                currentUser = newName;
-                if(viewedUser === currentUser || !viewedUser) viewedUser = newName;
-                localStorage.setItem("persistentLoginUser", newName);
-                sessionStorage.setItem("loginUser", newName);
-                document.getElementById("welcomeMessage").textContent = currentUser + " さん";
+                document.getElementById("welcomeMessage").textContent = newNickname + " さん";
                 document.getElementById("newUsernameInput").value = "";
-                alert("ユーザー名を変更しました！");
+                alert("ニックネームを変更しました！");
             });
         }
 
+        // 🛡 パスワードを変更するにはFirebase Authの再認証（現在のパスワード確認）が必要
         function changePassword() {
             let oldPass = document.getElementById("oldPasswordInput").value.trim();
             let newPass = document.getElementById("newPasswordInput").value.trim();
-            if (oldPass === "" || newPass === "") { alert("両方入力してね！"); return; }
+            if (oldPass === "" || newPass === "") { alert("両方入力してください！"); return; }
 
-            if (allUserData[currentUser]) {
-                if (allUserData[currentUser].password !== oldPass) { alert("現在のパスワードが違います！"); return; }
-                database.ref("users/" + currentUser + "/password").set(newPass)
+            let user = auth.currentUser;
+            if (!user) return;
+            let credential = firebase.auth.EmailAuthProvider.credential(user.email, oldPass);
+
+            user.reauthenticateWithCredential(credential)
+                .then(() => user.updatePassword(newPass))
                 .then(() => {
                     document.getElementById("oldPasswordInput").value = "";
                     document.getElementById("newPasswordInput").value = "";
                     resetPasswordInputs();
                     alert("パスワードを変更しました！");
-                });
-            }
+                })
+                .catch((err) => { alert(describeAuthError(err)); });
         }
 
+        // 🛡 アカウント削除も同様に再認証してからFirebase Auth側・データベース側の両方を削除する
         function deleteAccount() {
             let confirmPass = document.getElementById("deletePasswordInput").value.trim();
             if (confirmPass === "") { alert("パスワードを入力してください。"); return; }
 
-            if (allUserData[currentUser]) {
-                if (allUserData[currentUser].password !== confirmPass) { alert("パスワードが違います。"); return; }
-                if (confirm("本当にアカウントを完全に削除しますか？")) {
-                    database.ref("users/" + currentUser).remove()
-                    .then(() => { alert("アカウントを削除しました。"); logout(); });
-                }
-            }
+            let user = auth.currentUser;
+            if (!user) return;
+            let credential = firebase.auth.EmailAuthProvider.credential(user.email, confirmPass);
+
+            user.reauthenticateWithCredential(credential)
+                .then(() => {
+                    if (!confirm("本当にアカウントを完全に削除しますか？")) return Promise.reject({ code: "cancelled" });
+                    return database.ref("users/" + currentUser).remove().then(() => user.delete());
+                })
+                .then(() => { alert("アカウントを削除しました。"); })
+                .catch((err) => { if (err.code !== "cancelled") alert(describeAuthError(err)); });
         }
 
         // 👑 企画用のプール作成
@@ -1568,7 +1742,7 @@
             cachedKanjiChars = cachedAllChars.filter(c => /^[\u4E00-\u9FFF]$/.test(c));
         }
 
-        // 👑 対戦形式UIの表示切り替え
+        // 👑 对戦形式UIの表示切り替え
         function toggleGameTypeUI() {
             let type = document.getElementById("gameTypeOption").value;
             let membersGroup = document.getElementById("gameTeamMembersGroup");
@@ -1654,13 +1828,13 @@
                     let randStation = combinedStationsList[Math.floor(Math.random() * combinedStationsList.length)];
                     let randIdx = Math.floor(Math.random() * randStation.name.length) + 1;
                     let randChar = randStation.name.charAt(randIdx - 1) || "？";
-                    displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">${randStation.name}</span><br><b style="font-size:24px; color:#f1c40f;">${randIdx}文字目 → 「${randChar}」</b>`;
+                    displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">${escapeHtml(randStation.name)}</span><br><b style="font-size:24px; color:#f1c40f;">${randIdx}文字目 → 「${escapeHtml(randChar)}」</b>`;
                 } else if (type === "jouyo") {
                     let randChar = cachedKanjiChars[Math.floor(Math.random() * cachedKanjiChars.length)] || "駅";
-                    displayEl.innerHTML = `<span style="font-size:12px; color:#bdc3c7;">常用漢字スロット</span><br><b style="font-size:32px; color:#f1c40f;">「${randChar}」</b>`;
+                    displayEl.innerHTML = `<span style="font-size:12px; color:#bdc3c7;">常用漢字スロット</span><br><b style="font-size:32px; color:#f1c40f;">「${escapeHtml(randChar)}」</b>`;
                 } else {
                     let randChar = cachedAllChars[Math.floor(Math.random() * cachedAllChars.length)] || "あ";
-                    displayEl.innerHTML = `<span style="font-size:12px; color:#bdc3c7;">全文字スロット</span><br><b style="font-size:32px; color:#f1c40f;">「${randChar}」</b>`;
+                    displayEl.innerHTML = `<span style="font-size:12px; color:#bdc3c7;">全駅文字スロット</span><br><b style="font-size:32px; color:#f1c40f;">「${escapeHtml(randChar)}」</b>`;
                 }
                 
                 if (count >= 30) { 
@@ -1669,15 +1843,15 @@
                     
                     let modeTitle = "";
                     if (type === "rand") {
-                        displayEl.innerHTML = `<span style="font-size:15px; color:#ecf0f1; font-weight:bold;">🎲 ${finalStation}</span><br><b style="font-size:30px; color:#1abc9c;">${finalIndex}文字目 → 「${finalChar}」</b>`;
+                        displayEl.innerHTML = `<span style="font-size:15px; color:#ecf0f1; font-weight:bold;">🎲 ${escapeHtml(finalStation)}</span><br><b style="font-size:30px; color:#1abc9c;">${finalIndex}文字目 → 「${escapeHtml(finalChar)}」</b>`;
                         modeTitle = "駅名乱数モード";
                         lastOdaiText = `駅名乱数モード\n${finalStation} ${finalIndex}文字目 → 「${finalChar}」`;
                     } else if (type === "jouyo") {
-                        displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">🏮 常用漢字モード</span><br><b style="font-size:38px; color:#1abc9c;">「${finalChar}」</b>`;
+                        displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">🏮 常用漢字モード</span><br><b style="font-size:38px; color:#1abc9c;">「${escapeHtml(finalChar)}」</b>`;
                         modeTitle = "常用漢字モード";
                         lastOdaiText = `常用漢字モード\n「${finalChar}」`;
                     } else {
-                        displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">🌍 全駅文字モード</span><br><b style="font-size:38px; color:#1abc9c;">「${finalChar}」</b>`;
+                        displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">🌍 全駅文字モード</span><br><b style="font-size:38px; color:#1abc9c;">「${escapeHtml(finalChar)}」</b>`;
                         modeTitle = "全駅文字モード";
                         lastOdaiText = `全駅文字モード\n「${finalChar}」`;
                     }
@@ -1706,7 +1880,7 @@
                 let hasWon = isTeamMode && h.wonTeams && h.wonTeams.length > 0;
                 let bgStyle = hasWon ? "background-color: #d1f2eb; color: #117a65; border: 1px solid #a3e4d7;" : "background-color: #f4f6f7; border: 1px solid #d5dbdb;";
                 
-                html += `<span class="hist-char" style="cursor:pointer; font-weight:bold; ${bgStyle}" onclick="clickHistoryChar(${i})">「${h.char}」</span>`;
+                html += `<span class="hist-char" style="cursor:pointer; font-weight:bold; ${bgStyle}" onclick="clickHistoryChar(${i})">「${escapeHtml(h.char)}」</span>`;
                 
                 if ((i + 1) % 5 === 0) {
                     if ((i + 1) % 10 === 0) {
@@ -2110,7 +2284,7 @@
                 let textResult = JSON.stringify(pureState);
 
                 navigator.clipboard.writeText(textResult).then(() => {
-                    alert("【データのコピー成功！】\n改行なしのコンパクトな1行テキストとしてコピーしました！\nこのままLINEに貼り付けても一切邪魔になりません。");
+                    alert("【データのコピー成功！】\nテキストとしてコピーしました！\nこのままLINEに貼り付けてください。");
                 }).catch(() => {
                     alert("クリップボードへの自動コピーに失敗しました。");
                 });
@@ -2163,7 +2337,7 @@
                 let displayEl = document.getElementById("gameOdaisDisplay");
                 if (gameHistory.length > 0) {
                     let lastItem = gameHistory[gameHistory.length - 1];
-                    displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">前回の最後のお題</span><br><b style="font-size:32px; color:#1abc9c;">「${lastItem.char}」</b>`;
+                    displayEl.innerHTML = `<span style="font-size:14px; color:#bdc3c7;">前回の最後のお題</span><br><b style="font-size:32px; color:#1abc9c;">「${escapeHtml(lastItem.char)}」</b>`;
                     lastOdaiText = `${lastItem.mode || "前回のモード"}\n「${lastItem.char}」`;
                 } else {
                     displayEl.innerHTML = `<span style="color:#bdc3c7;">ボタンを押してお題を引いてね！</span>`;
@@ -2177,7 +2351,7 @@
                 saveGameStateToStorage();
 
                 textarea.value = ""; 
-                alert("🎉 【引き継ぎ完了】\nテキスト形式のデータから、プレイヤー、得点、文字履歴をすべて完璧に復元しました！そのまま企画を再開できます。");
+                alert("🎉 【引き継ぎ完了】\nテキスト形式のデータから、プレイヤー、得点、文字履歴をすべて復元しました！そのまま企画を再開できます。");
             } catch (e) {
                 alert("❌ 【エラー】\nデータの解析に失敗しました。テキストが途中で切れていないか確認してください。");
                 console.error(e);
